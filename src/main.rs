@@ -1,6 +1,6 @@
 use std::{io, thread, time::{Duration, Instant}, sync::mpsc, vec};
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen}, execute, event::{EnableMouseCapture, DisableMouseCapture, self, KeyEventKind, KeyCode, Event}, style::Stylize};
-use tui::{backend::{CrosstermBackend, Backend}, Terminal, widgets::{Block, Borders, Paragraph, ListItem, List}, layout::{Layout, Direction, Constraint}, Frame, text::{Span, Text, Spans}, style::{Style, Modifier, Color}};
+use tui::{backend::{CrosstermBackend, Backend}, Terminal, widgets::{Block, Borders, Paragraph, ListItem, List}, layout::{Layout, Direction, Constraint, Rect}, Frame, text::{Span, Text, Spans}, style::{Style, Modifier, Color}};
 
 
 enum InputMode {
@@ -15,7 +15,9 @@ struct App {
     /// Current input mode
     input_mode: InputMode,
     /// History of recorded messages
-    messages: Vec<String>
+    messages: Vec<String>,
+
+    data: Vec<Vec<String>>
 }
 
 impl Default for App {
@@ -24,6 +26,7 @@ impl Default for App {
             input: String::new(),
             input_mode: InputMode::Normal,
             messages: Vec::new(),
+            data: Vec::new()
         }
     }
 }
@@ -138,14 +141,77 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
 
 fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .margin(0)
+        .constraints(
+                [
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Length(15),
+                    Constraint::Min(0),
+                ].as_ref()
+            )
+        .split(f.size());
+    // println!("{:?}", chunks);
+    let grid_chunks: Vec<Vec<Rect>> = chunks
+        .chunks(1)
+        .map(|col| {
+            //println!("{:?}", col);
+            Layout::default()
+                .direction(Direction::Vertical)
+                .margin(0)
+                .constraints([
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Min(0),
+                ].as_ref())
+                .split(col[0])
+        }).collect();
+    // println!("{:?}",grid_chunks.len());
+    
+    for column in grid_chunks {
+        for cell in column {
+            let block = Block::default()
+                .title("Cell")
+                .borders(Borders::ALL);
+            f.render_widget(block, cell);
+        }
+    }
+
+    /*let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(2)
+        // .margin(2)
         .constraints([
             Constraint::Length(1),
             Constraint::Length(3),
             Constraint::Min(1),
         ].as_ref())
-        .split(f.size());
+        .split(f.size()); */
+    // println!("{:?}", chunks);
+    // println!("{:?}", f.size());
     let (msg, style) = match app.input_mode {
         InputMode::Normal => (
             vec![
@@ -171,7 +237,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     let mut text = Text::from(Spans::from(msg));
     text.patch_style(style);
     let help_message = Paragraph::new(text);
-    f.render_widget(help_message, chunks[0]);
+    // f.render_widget(help_message, chunks[0]);
 
     let input = Paragraph::new(app.input.as_ref())
         .style(match app.input_mode {
@@ -179,7 +245,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
             InputMode::Editing => Style::default().fg(Color::Yellow),
         })
         .block(Block::default().borders(Borders::ALL).title("Input"));
-    f.render_widget(input, chunks[1]);
+    // f.render_widget(input, chunks[1]);
     match app.input_mode {
         InputMode::Normal => {},
         InputMode::Editing => {
@@ -200,6 +266,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         })
         .collect();
     let messages = List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
-    f.render_widget(messages,chunks[2]);
+    // f.render_widget(messages,chunks[2]);
 }
 // https://blog.logrocket.com/rust-and-tui-building-a-command-line-interface-in-rust/
