@@ -1,6 +1,6 @@
 use std::{io, thread, time::{Duration, Instant}, sync::mpsc, vec};
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen}, execute, event::{EnableMouseCapture, DisableMouseCapture, self, KeyEventKind, KeyCode, Event}, style::Stylize};
-use tui::{backend::{CrosstermBackend, Backend}, Terminal, widgets::{Block, Borders, Paragraph, ListItem, List}, layout::{Layout, Direction, Constraint, Rect}, Frame, text::{Span, Text, Spans}, style::{Style, Modifier, Color}};
+use tui::{backend::{CrosstermBackend, Backend}, Terminal, widgets::{Block, Borders, Paragraph, ListItem, List}, layout::{Layout, Direction, Constraint, Rect, Margin}, Frame, text::{Span, Text, Spans}, style::{Style, Modifier, Color}};
 
 
 enum InputMode {
@@ -106,6 +106,7 @@ fn main() -> Result<(), io::Error>{
 }
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+
     loop {
         terminal.draw(|f| ui(f, &app))?;
         if let Event::Key(key) = event::read()? {
@@ -140,6 +141,10 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
 }
 
 fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
+    let margin = Margin {
+        horizontal: 0,
+        vertical: 0,
+    };
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .margin(0)
@@ -195,7 +200,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     for column in grid_chunks {
         for cell in column {
             let block = Block::default()
-                .title("Cell")
+                //.title("Cell")
                 .borders(Borders::ALL);
             f.render_widget(block, cell);
         }
