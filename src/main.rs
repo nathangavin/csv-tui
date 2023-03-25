@@ -184,7 +184,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
 
 
                     if app.pos.0 == row && app.pos.1 == col {
-                        let style = Style::default().add_modifier(Modifier::RAPID_BLINK);
+                        let style = Style::default().add_modifier(Modifier::RAPID_BLINK).fg(Color::Yellow);
                         let cell = Cell::from(Span::styled(cell_value, style));
                         row_vec.push(cell);
                     } else {
@@ -193,47 +193,41 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                     }
                     //row_vec.push(cell);
                 }
-                InputMode::Editing => {}
+                InputMode::Editing => {
+
+                    if app.pos.0 == row && app.pos.1 == col {
+                        let style = Style::default().fg(Color::Yellow);
+                        let cell = Cell::from(Span::styled(&app.input, style));
+                        row_vec.push(cell);
+                    } else {
+                        let cell = Cell::from("_____");
+                        row_vec.push(cell);
+                    }
+                }
             }
             //row_vec.push(Cell::from("_____"));
         }
         table_rows.push(Row::new(row_vec));
     }
-    
+    let col_width = 5;
     let mut widths = Vec::new();
     for _ in 0..cols {
-        widths.push(Constraint::Length(5));
+        widths.push(Constraint::Length(col_width));
     }
 
     let table = Table::new(table_rows)
-        .header(
-            Row::new(vec!["top1", "top2", "top3"])
-            .style(Style::default().fg(Color::Red))
-            .bottom_margin(1)
-            )
         .block(Block::default().title("Table").borders(Borders::ALL))
         .widths(&widths)
         .column_spacing(1)
         .highlight_style(Style::default().add_modifier(Modifier::BOLD));
     f.render_widget(table,chunks[1]);
-    let input = Paragraph::new(app.input.as_ref())
-        .style(match app.input_mode {
-            InputMode::Normal => Style::default(),
-            InputMode::Editing => Style::default().fg(Color::Yellow),
-        })
-        .block(Block::default().borders(Borders::ALL).title("Input"));
-    // f.render_widget(input, chunks[1]);
+
     match app.input_mode {
         InputMode::Normal => {},
         InputMode::Editing => {
-            f.set_cursor(
-                 chunks[1].x + app.input.len() as u16 + 1,
-                 chunks[1].y + 1    
-            )
+            let x = chunks[1].x + (col_width * (app.pos.1 as u16 + 1)) + app.input.len() as u16 + 2;
+            let y = chunks[1].y + app.pos.0 as u16 + 1;
+            f.set_cursor(x,y)
         }
     }
 }
-fn cell_border_style() -> Style {
-    Style::default().fg(Color::White).bg(Color::Black).add_modifier(Modifier::BOLD)
-}
-// https://blog.logrocket.com/rust-and-tui-building-a-command-line-interface-in-rust/
