@@ -225,7 +225,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     match app.input_mode {
         InputMode::Normal => {},
         InputMode::Editing => {
-            let x = chunks[1].x + (col_width * (app.pos.1 as u16 + 1)) + app.input.len() as u16 + 2;
+            let x = chunks[1].x + ((col_width + 1) * (app.pos.1 as u16 + 1)) + app.input.len() as u16 + 1;
             let y = chunks[1].y + app.pos.0 as u16 + 1;
             f.set_cursor(x,y)
         }
