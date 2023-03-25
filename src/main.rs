@@ -90,6 +90,22 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     KeyCode::Char('q') => {
                         return Ok(());
                     },
+                    KeyCode::Left => {
+                        if app.pos.1 > 0 {
+                            app.pos.1 -= 1;
+                        }
+                    },
+                    KeyCode::Right => {
+                        app.pos.1 += 1;
+                    },
+                    KeyCode::Up => {
+                        if app.pos.0 > 0 {
+                            app.pos.0 -= 1;
+                        }
+                    },
+                    KeyCode::Down => {
+                        app.pos.0 += 1;
+                    },
                     _ => {}
                 },
                 InputMode::Editing => match key.code {
