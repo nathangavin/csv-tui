@@ -1,6 +1,6 @@
 use std::{io, thread, time::{Duration, Instant}, sync::mpsc, vec};
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen}, execute, event::{EnableMouseCapture, DisableMouseCapture, self, KeyEventKind, KeyCode, Event}, style::Stylize};
-use tui::{backend::{CrosstermBackend, Backend}, Terminal, widgets::{Block, Borders, Paragraph, ListItem, List}, layout::{Layout, Direction, Constraint, Rect, Margin}, Frame, text::{Span, Text, Spans}, style::{Style, Modifier, Color}};
+use tui::{backend::{CrosstermBackend, Backend}, Terminal, widgets::{Row, Cell,Block, Borders, Paragraph, ListItem, List, Table}, layout::{Layout, Direction, Constraint, Rect, Margin}, Frame, text::{Span, Text, Spans}, style::{Style, Modifier, Color}};
 
 
 enum InputMode {
@@ -141,36 +141,18 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
 }
 
 fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
-    let margin = Margin {
-        horizontal: 0,
-        vertical: 0,
-    };
     let chunks = Layout::default()
-        .direction(Direction::Horizontal)
+        .direction(Direction::Vertical)
         .margin(0)
         .constraints(
                 [
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
-                    Constraint::Length(15),
+                    Constraint::Length(3),
                     Constraint::Min(0),
                 ].as_ref()
             )
-        .split(f.size());
+        .split(f.size()); 
     // println!("{:?}", chunks);
-    let grid_chunks: Vec<Vec<Rect>> = chunks
+    /*let grid_chunks: Vec<Vec<Rect>> = chunks
         .chunks(1)
         .map(|col| {
             //println!("{:?}", col);
@@ -194,18 +176,44 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                     Constraint::Min(0),
                 ].as_ref())
                 .split(col[0])
-        }).collect();
+        }).collect(); */
     // println!("{:?}",grid_chunks.len());
     
-    for column in grid_chunks {
+    /*for column in grid_chunks {
         for cell in column {
             let block = Block::default()
                 //.title("Cell")
                 .borders(Borders::ALL);
-            f.render_widget(block, cell);
+            // f.render_widget(block, cell);
         }
+    }*/
+    let rows : usize = 50;
+    let cols : usize = 50;
+    let mut table_rows = Vec::new();
+    for _ in 0..rows {
+        let mut row_vec = Vec::new();
+        for _ in 0..cols {
+            row_vec.push(Cell::from("_____"));
+        }
+        table_rows.push(Row::new(row_vec));
+    }
+    
+    let mut widths = Vec::new();
+    for _ in 0..cols {
+        widths.push(Constraint::Length(5));
     }
 
+    let table = Table::new(table_rows)
+        .header(
+            Row::new(vec!["top1", "top2", "top3"])
+            .style(Style::default().fg(Color::Red))
+            .bottom_margin(1)
+            )
+        .block(Block::default().title("Table").borders(Borders::ALL))
+        .widths(&widths)
+        .column_spacing(1)
+        .highlight_style(Style::default().add_modifier(Modifier::BOLD));
+    f.render_widget(table,chunks[1]);
     /*let chunks = Layout::default()
         .direction(Direction::Vertical)
         // .margin(2)
@@ -242,7 +250,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     let mut text = Text::from(Spans::from(msg));
     text.patch_style(style);
     let help_message = Paragraph::new(text);
-    // f.render_widget(help_message, chunks[0]);
+    f.render_widget(help_message, chunks[0]);
 
     let input = Paragraph::new(app.input.as_ref())
         .style(match app.input_mode {
@@ -272,5 +280,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         .collect();
     let messages = List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
     // f.render_widget(messages,chunks[2]);
+}
+fn cell_border_style() -> Style {
+    Style::default().fg(Color::White).bg(Color::Black).add_modifier(Modifier::BOLD)
 }
 // https://blog.logrocket.com/rust-and-tui-building-a-command-line-interface-in-rust/
