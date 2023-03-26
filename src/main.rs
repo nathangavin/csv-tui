@@ -115,6 +115,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     },
                     KeyCode::Char(char) => {
                         app.input.push(char);
+                        app = add_char_to_cell(app, char);
                     },
                     KeyCode::Backspace => {
                         app.input.pop();
@@ -178,11 +179,21 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         let mut row_vec = Vec::new();
         row_vec.push(Cell::from(row.to_string()));
         for col in 0..cols {
+            let cell_value = match app.data.get(row) {
+                Some(data_row) => {
+                    match data_row.get(col) {
+                        Some(data_cell) => { data_cell },
+                        None => {
+                            "_____"
+                        }
+                    }
+                },
+                None => {
+                    "_____" 
+                }
+            };
             match app.input_mode {
                 InputMode::Normal => {
-                    let cell_value = "_____";
-
-
                     if app.pos.0 == row && app.pos.1 == col {
                         let style = Style::default().add_modifier(Modifier::RAPID_BLINK).fg(Color::Yellow);
                         let cell = Cell::from(Span::styled(cell_value, style));
@@ -194,13 +205,12 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                     //row_vec.push(cell);
                 }
                 InputMode::Editing => {
-
                     if app.pos.0 == row && app.pos.1 == col {
                         let style = Style::default().fg(Color::Yellow);
-                        let cell = Cell::from(Span::styled(&app.input, style));
+                        let cell = Cell::from(Span::styled(cell_value, style));
                         row_vec.push(cell);
                     } else {
-                        let cell = Cell::from("_____");
+                        let cell = Cell::from(cell_value);
                         row_vec.push(cell);
                     }
                 }
@@ -230,4 +240,38 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
             f.set_cursor(x,y)
         }
     }
+}
+
+fn add_char_to_cell(mut app: App, char: char) -> App {
+    if app.data.len() <= app.pos.0 {
+        for _ in 0..app.pos.0 + 1 {
+            app.data.push(Vec::new()); 
+        }
+    }
+    let mut row: &mut Vec<String> = match app.data.get(app.pos.0) {
+        Some(data_row) => data_row,
+        None => {
+            for _ in 0..app.pos.0 + 1 {
+                app.data.push(Vec::new());
+            }
+            &app.data[app.pos.0]
+        }
+    };
+    let cell = match row.get(app.pos.1) {
+        Some(cell_data) => cell_data,
+        None => {
+            for _ in 0..app.pos.1 + 1 {
+                row.push(String::new());
+            }
+            &row[app.pos.1]
+        }
+    };
+    if app.data[app.pos.0].len() + 1 < app.pos.1 {
+        for _ in 0..app.pos.1 + 1 {
+            app.data[app.pos.0].push(String::new());
+        }
+    }
+    app.data[app.pos.0][app.pos.1].push(char);
+
+    app
 }
