@@ -202,7 +202,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                         let cell = Cell::from(cell_value);
                         row_vec.push(cell);
                     }
-                    //row_vec.push(cell);
                 }
                 InputMode::Editing => {
                     if app.pos.0 == row && app.pos.1 == col {
@@ -215,7 +214,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                     }
                 }
             }
-            //row_vec.push(Cell::from("_____"));
         }
         table_rows.push(Row::new(row_vec));
     }
@@ -235,43 +233,47 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     match app.input_mode {
         InputMode::Normal => {},
         InputMode::Editing => {
-            let x = chunks[1].x + ((col_width + 1) * (app.pos.1 as u16 + 1)) + app.input.len() as u16 + 1;
+            let x = chunks[1].x + 
+                ((col_width + 1) * (app.pos.1 as u16 + 1)) + 
+                get_cell_value_len(app, app.pos.0, app.pos.1) as u16 + 1;
             let y = chunks[1].y + app.pos.0 as u16 + 1;
             f.set_cursor(x,y)
         }
     }
 }
 
-fn add_char_to_cell(mut app: App, char: char) -> App {
-    if app.data.len() <= app.pos.0 {
-        for _ in 0..app.pos.0 + 1 {
-            app.data.push(Vec::new()); 
-        }
+fn get_cell_value_len(app: &App, row: usize, col: usize) -> usize {
+    match app.data.get(row) {
+        Some(row) => {
+            match row.get(col) {
+                Some(cell_value) => cell_value.len(),
+                None => 0
+            }
+        },
+        None => 0
     }
-    let mut row: &mut Vec<String> = match app.data.get(app.pos.0) {
+}
+
+fn add_char_to_cell(mut app: App, char: char) -> App {
+    let row: &mut Vec<String> = match app.data.get_mut(app.pos.0) {
         Some(data_row) => data_row,
         None => {
             for _ in 0..app.pos.0 + 1 {
                 app.data.push(Vec::new());
             }
-            &app.data[app.pos.0]
+            app.data.get_mut(app.pos.0).unwrap()
         }
     };
-    let cell = match row.get(app.pos.1) {
+    let cell = match row.get_mut(app.pos.1) {
         Some(cell_data) => cell_data,
         None => {
             for _ in 0..app.pos.1 + 1 {
                 row.push(String::new());
             }
-            &row[app.pos.1]
+            row.get_mut(app.pos.1).unwrap()
         }
     };
-    if app.data[app.pos.0].len() + 1 < app.pos.1 {
-        for _ in 0..app.pos.1 + 1 {
-            app.data[app.pos.0].push(String::new());
-        }
-    }
-    app.data[app.pos.0][app.pos.1].push(char);
+    cell.push(char);
 
     app
 }
