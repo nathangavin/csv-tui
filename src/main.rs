@@ -1,6 +1,44 @@
-use std::{io, thread, time::{Duration, Instant}, sync::mpsc, vec};
-use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen}, execute, event::{EnableMouseCapture, DisableMouseCapture, self, KeyEventKind, KeyCode, Event}, style::Stylize};
-use tui::{backend::{CrosstermBackend, Backend}, Terminal, widgets::{Row, Cell,Block, Borders, Paragraph, ListItem, List, Table}, layout::{Layout, Direction, Constraint, Rect, Margin}, Frame, text::{Span, Text, Spans}, style::{Style, Modifier, Color}};
+use std::{
+    io, 
+    vec};
+use crossterm::{
+    terminal::{
+        enable_raw_mode, 
+        EnterAlternateScreen, 
+        disable_raw_mode, 
+        LeaveAlternateScreen}, 
+    execute, 
+    event::{
+        EnableMouseCapture, 
+        DisableMouseCapture, 
+        self, 
+        KeyCode, 
+        Event}};
+use tui::{
+    backend::{
+        CrosstermBackend, 
+        Backend}, 
+    Terminal, 
+    widgets::{
+        Row, 
+        Cell,
+        Block, 
+        Borders, 
+        Paragraph, 
+        Table}, 
+    layout::{
+        Layout, 
+        Direction, 
+        Constraint}, 
+    Frame, 
+    text::{
+        Span, 
+        Text, 
+        Spans}, 
+    style::{
+        Style, 
+        Modifier, 
+        Color}};
 
 
 enum InputMode {
@@ -77,7 +115,10 @@ fn main() -> Result<(), io::Error>{
     Ok(())
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+fn run_app<B: Backend>(
+                terminal: &mut Terminal<B>, 
+                mut app: App
+                ) -> io::Result<()> {
 
     loop {
         terminal.draw(|f| ui(f, &app))?;
@@ -148,9 +189,11 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         InputMode::Normal => (
             vec![
                 Span::raw("Press "),
-                Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
+                Span::styled("q", 
+                             Style::default().add_modifier(Modifier::BOLD)),
                 Span::raw(" to exit, "),
-                Span::styled("e", Style::default().add_modifier(Modifier::BOLD)),
+                Span::styled("e", 
+                             Style::default().add_modifier(Modifier::BOLD)),
                 Span::raw(" to Start editing."),
             ],
             Style::default().add_modifier(Modifier::RAPID_BLINK),
@@ -158,9 +201,11 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         InputMode::Editing => (
             vec![
                 Span::raw("Press "),
-                Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                Span::styled("Esc", 
+                             Style::default().add_modifier(Modifier::BOLD)),
                 Span::raw(" to stop editing, "),
-                Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                Span::styled("Enter", 
+                             Style::default().add_modifier(Modifier::BOLD)),
                 Span::raw(" to record the message"),
             ],
             Style::default(),
@@ -174,28 +219,53 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     // build table
     let rows : usize = 50;
     let cols : usize = 50;
+    let col_width: usize = 5;
     let mut table_rows = Vec::new();
+
+    let mut widths = Vec::new();
+    widths.push(Constraint::Length(col_width as u16));
+    for col in 1..=cols {
+        let max_width = get_max_col_width(app, col-1);
+        // print!("{} ", max_width);
+        widths.push(Constraint::Length(max_width as u16));
+    }
+
     for row in 0..rows {
         let mut row_vec = Vec::new();
         row_vec.push(Cell::from(row.to_string()));
         for col in 0..cols {
-            let cell_value = match app.data.get(row) {
+            let mut cell_value = String::from(match app.data.get(row) {
                 Some(data_row) => {
                     match data_row.get(col) {
-                        Some(data_cell) => { data_cell },
+                        Some(data_cell) => {
+                            if data_cell.len() > 0 {
+                                data_cell
+                            } else {
+                                "_______________"
+                            }
+                        },
                         None => {
-                            "_____"
+                            "_______________"
                         }
                     }
                 },
                 None => {
-                    "_____" 
+                    "_______________"
                 }
-            };
+            });
+            if cell_value.len() < get_max_col_width(app, col) {
+                let diff = get_max_col_width(app, col) - cell_value.len();
+                for _ in 0..diff {
+                    cell_value.push('_');
+                }
+            }
+                
             match app.input_mode {
                 InputMode::Normal => {
                     if app.pos.0 == row && app.pos.1 == col {
-                        let style = Style::default().add_modifier(Modifier::RAPID_BLINK).fg(Color::Yellow);
+                        let style = Style::default()
+                            .add_modifier(Modifier::RAPID_BLINK)
+                            .fg(Color::Yellow);
                         let cell = Cell::from(Span::styled(cell_value, style));
                         row_vec.push(cell);
                     } else {
@@ -217,11 +287,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         }
         table_rows.push(Row::new(row_vec));
     }
-    let col_width = 5;
-    let mut widths = Vec::new();
-    for _ in 0..cols {
-        widths.push(Constraint::Length(col_width));
-    }
 
     let table = Table::new(table_rows)
         .block(Block::default().title("Table").borders(Borders::ALL))
@@ -233,13 +298,44 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     match app.input_mode {
         InputMode::Normal => {},
         InputMode::Editing => {
+            let prev_cells_width_sum = match app.data.get(app.pos.0) {
+                Some(row) => {
+                    let row_sum: usize = row[0..app.pos.1].iter().map(|cell| {
+                        if cell.len() > 0 {
+                            return cell.len() + 1;
+                        }
+                        return col_width + 1;
+                    }).sum();
+                    row_sum + col_width + 1
+                },
+                None => {
+                    (col_width + 1) * (app.pos.1 + 1)
+                } 
+            };
+            //print!("{:?}", prev_cells_width_sum);
             let x = chunks[1].x + 
-                ((col_width + 1) * (app.pos.1 as u16 + 1)) + 
+                 prev_cells_width_sum as u16 +
                 get_cell_value_len(app, app.pos.0, app.pos.1) as u16 + 1;
             let y = chunks[1].y + app.pos.0 as u16 + 1;
             f.set_cursor(x,y)
         }
     }
+}
+
+fn get_max_col_width(app: &App, col: usize) -> usize {
+    let mut max_width = 5;
+
+    for row in app.data.iter() {
+        match row.get(col) {
+            Some(cell_value) => {
+                if cell_value.len() > max_width {
+                    max_width = cell_value.len();
+                }
+            },
+            None => {}
+        }
+    }
+   max_width 
 }
 
 fn get_cell_value_len(app: &App, row: usize, col: usize) -> usize {
