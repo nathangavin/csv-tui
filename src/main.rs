@@ -1,6 +1,4 @@
-use std::{
-    io, 
-    vec};
+use std::{io, vec};
 use crossterm::{
     terminal::{
         enable_raw_mode, 
@@ -152,11 +150,13 @@ fn run_app<B: Backend>(
                 InputMode::Editing => match key.code {
                     KeyCode::Enter => {
                         //app.messages.push(app.input.drain(..).collect());
-                        todo!();
+                        let current_input = app.input.drain(..).collect();
+                        app = add_value_to_cell(app, current_input);
+                        app.input_mode = InputMode::Normal;
                     },
                     KeyCode::Char(char) => {
                         app.input.push(char);
-                        app = add_char_to_cell(app, char);
+                        //app = add_char_to_cell(app, char);
                     },
                     KeyCode::Backspace => {
                         app.input.pop();
@@ -177,18 +177,16 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         .direction(Direction::Vertical)
         .margin(0)
         .constraints(
-                [
-                    Constraint::Length(3),
-                    Constraint::Min(0),
-                ].as_ref()
-            )
+            [
+                Constraint::Length(1),
+                Constraint::Length(3), 
+                Constraint::Min(0), 
+            ].as_ref()) 
         .split(f.size()); 
-
-    // set up dynamic message at top level
-    let (msg, style) = match app.input_mode {
-        InputMode::Normal => (
-            vec![
-                Span::raw("Press "),
+            //set up dynamic message at top level 
+    let (msg, style) = match app.input_mode { 
+        InputMode::Normal => ( 
+            vec![ Span::raw("Press "), 
                 Span::styled("q", 
                              Style::default().add_modifier(Modifier::BOLD)),
                 Span::raw(" to exit, "),
@@ -215,6 +213,10 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     text.patch_style(style);
     let help_message = Paragraph::new(text);
     f.render_widget(help_message, chunks[0]);
+    
+    let input = Paragraph::new(app.input.as_ref())
+        .block(Block::default().borders(Borders::ALL).title("Input"));
+    f.render_widget(input, chunks[1]);
 
     // build table
     let rows : usize = 50;
@@ -234,7 +236,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         let mut row_vec = Vec::new();
         row_vec.push(Cell::from(row.to_string()));
         for col in 0..cols {
-            let mut cell_value = String::from(match app.data.get(row) {
+            let cell_value = String::from(match app.data.get(row) {
                 Some(data_row) => {
                     match data_row.get(col) {
                         Some(data_cell) => {
@@ -253,12 +255,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                     "_______________"
                 }
             });
-            if cell_value.len() < get_max_col_width(app, col) {
-                let diff = get_max_col_width(app, col) - cell_value.len();
-                for _ in 0..diff {
-                    cell_value.push('_');
-                }
-            }
                 
             match app.input_mode {
                 InputMode::Normal => {
@@ -293,31 +289,17 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         .widths(&widths)
         .column_spacing(1)
         .highlight_style(Style::default().add_modifier(Modifier::BOLD));
-    f.render_widget(table,chunks[1]);
-
+    f.render_widget(table,chunks[2]);
+    
+    // position cursor
     match app.input_mode {
         InputMode::Normal => {},
         InputMode::Editing => {
-            let prev_cells_width_sum = match app.data.get(app.pos.0) {
-                Some(row) => {
-                    let row_sum: usize = row[0..app.pos.1].iter().map(|cell| {
-                        if cell.len() > 0 {
-                            return cell.len() + 1;
-                        }
-                        return col_width + 1;
-                    }).sum();
-                    row_sum + col_width + 1
-                },
-                None => {
-                    (col_width + 1) * (app.pos.1 + 1)
-                } 
-            };
-            //print!("{:?}", prev_cells_width_sum);
-            let x = chunks[1].x + 
-                 prev_cells_width_sum as u16 +
-                get_cell_value_len(app, app.pos.0, app.pos.1) as u16 + 1;
-            let y = chunks[1].y + app.pos.0 as u16 + 1;
-            f.set_cursor(x,y)
+            f.set_cursor(
+                chunks[1].x + app.input.len() as u16 + 1, 
+                chunks[1].y + 1
+            )
+
         }
     }
 }
@@ -370,6 +352,31 @@ fn add_char_to_cell(mut app: App, char: char) -> App {
         }
     };
     cell.push(char);
+
+    app
+}
+
+fn add_value_to_cell(mut app: App, input: String) -> App {
+    
+    let row: &mut Vec<String> = match app.data.get_mut(app.pos.0) {
+        Some(data_row) => data_row,
+        None => {
+            for _ in 0..app.pos.0 + 1 {
+                app.data.push(Vec::new());
+            }
+            app.data.get_mut(app.pos.0).unwrap()
+        }
+    };
+    let cell = match row.get_mut(app.pos.1) {
+        Some(cell_data) => cell_data,
+        None => {
+            for _ in 0..app.pos.1 + 1 {
+                row.push(String::new());
+            }
+            row.get_mut(app.pos.1).unwrap()
+        }
+    };
+    *cell = input;
 
     app
 }
