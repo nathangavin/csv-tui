@@ -1,4 +1,4 @@
-use std::{io, vec};
+use std::{io, vec, fs};
 use crossterm::{
     terminal::{
         enable_raw_mode, 
@@ -127,6 +127,7 @@ fn run_app<B: Backend>(
                         app.input_mode = InputMode::Editing;
                     },
                     KeyCode::Char('q') => {
+                        let _ = save_data_to_file(app);
                         return Ok(());
                     },
                     KeyCode::Left => {
@@ -351,3 +352,27 @@ fn add_value_to_cell(mut app: App, input: String) -> App {
 
     app
 }
+fn create_csv_string(app: App) -> String {
+    let output = app.data.iter().fold(String::new(), |mut sum, row| {
+        let mut row_value = row.iter().fold(String::new(), |mut row_sum, cell| {
+            row_sum.push_str(cell);
+            row_sum.push(',');
+            row_sum
+        });
+        row_value.push('\n');
+        sum.push_str(&row_value);
+        sum
+    });
+    
+    output
+}
+
+fn save_data_to_file(app: App) -> std::io::Result<()>  {
+    fs::write("./output.csv", create_csv_string(app))?;
+    Ok(())
+}
+
+// TODO
+// file save needs to add commas for empty rows
+// when editing cell, value needs to be put into buffer
+// add commands for inserting/deleting rows & columns
