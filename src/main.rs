@@ -236,7 +236,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         let mut row_vec = Vec::new();
         row_vec.push(Cell::from(row.to_string()));
         for col in 0..cols {
-            let cell_value = String::from(match app.data.get(row) {
+            let mut cell_value = String::from(match app.data.get(row) {
                 Some(data_row) => {
                     match data_row.get(col) {
                         Some(data_cell) => {
@@ -255,7 +255,14 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                     "_______________"
                 }
             });
-                
+            
+            if  cell_value.len() < get_max_col_width(app, col) {
+                let diff = get_max_col_width(app, col) - cell_value.len();
+                for _ in 0..diff {
+                    cell_value.push('_');
+                }
+            }
+
             match app.input_mode {
                 InputMode::Normal => {
                     if app.pos.0 == row && app.pos.1 == col {
@@ -318,42 +325,6 @@ fn get_max_col_width(app: &App, col: usize) -> usize {
         }
     }
    max_width 
-}
-
-fn get_cell_value_len(app: &App, row: usize, col: usize) -> usize {
-    match app.data.get(row) {
-        Some(row) => {
-            match row.get(col) {
-                Some(cell_value) => cell_value.len(),
-                None => 0
-            }
-        },
-        None => 0
-    }
-}
-
-fn add_char_to_cell(mut app: App, char: char) -> App {
-    let row: &mut Vec<String> = match app.data.get_mut(app.pos.0) {
-        Some(data_row) => data_row,
-        None => {
-            for _ in 0..app.pos.0 + 1 {
-                app.data.push(Vec::new());
-            }
-            app.data.get_mut(app.pos.0).unwrap()
-        }
-    };
-    let cell = match row.get_mut(app.pos.1) {
-        Some(cell_data) => cell_data,
-        None => {
-            for _ in 0..app.pos.1 + 1 {
-                row.push(String::new());
-            }
-            row.get_mut(app.pos.1).unwrap()
-        }
-    };
-    cell.push(char);
-
-    app
 }
 
 fn add_value_to_cell(mut app: App, input: String) -> App {
