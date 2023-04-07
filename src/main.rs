@@ -370,11 +370,13 @@ fn create_csv_string(app: App) -> String {
         None => 0
     };
     let output = app.data.iter().fold(String::new(), |mut sum, row| {
-        let mut row_value = row.iter().fold(String::new(), |mut row_sum, cell| {
-            row_sum.push_str(cell);
-            row_sum.push(',');
-            row_sum
-        });
+        let mut row_value = row.iter().fold(
+            String::new(), 
+            |mut row_sum, cell| {
+                row_sum.push_str(cell);
+                row_sum.push(',');
+                row_sum
+            });
         if row.len() < num_cols {
             for _ in row.len()..num_cols {
                 row_value.push(',');
@@ -395,3 +397,6 @@ fn save_data_to_file(app: App) -> std::io::Result<()>  {
 
 // TODO
 // add commands for inserting/deleting rows & columns
+// add save as feature
+// import static file on load
+// create input args
