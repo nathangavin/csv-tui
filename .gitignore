@@ -1,6 +1,6 @@
 /target
 Cargo.Lock
-
+*.csv
 # Added by cargo
 #
 # already existing elements were commented out
