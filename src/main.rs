@@ -1,4 +1,4 @@
-use std::{io, vec, fs};
+use std::{io, vec, fs::{self, File}};
 use crossterm::{
     terminal::{
         enable_raw_mode, 
@@ -87,6 +87,9 @@ fn main() -> Result<(), io::Error>{
             }
         }
     }); */
+
+    //load_file_into_app("./output.csv".to_string()).unwrap();
+    //return Ok(());
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend  = CrosstermBackend::new(stdout);
@@ -96,7 +99,15 @@ fn main() -> Result<(), io::Error>{
         ui::<CrosstermBackend<io::Stdout>>(f);
     })?; */
     
-    let app = App::default();
+    //let app = App::default();
+    let app = match load_file_into_app(String::from("output.csv")) {
+        Ok(app) => app,
+        Err(_) => {
+            disable_raw_mode()?;
+            println!("Unable to load csv");
+            panic!();
+        }
+    };
     let res = run_app(&mut terminal, app);
 
     disable_raw_mode()?;
@@ -323,6 +334,23 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     }
 }
 
+fn load_file_into_app(filename: String) -> Result<App, io::Error> {
+    let mut app = App::default();
+    let mut reader = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_path(filename)?;
+   
+   
+    for row in reader.records() {
+        app.data.push(row.unwrap().iter().map(|cell_value| {
+            String::from(cell_value)
+        }).collect());
+        //println!("{:?}", row.unwrap());
+    }
+
+    Ok(app)
+}
+
 fn get_max_col_width(app: &App, col: usize) -> usize {
     let mut max_width = 5;
 
@@ -382,6 +410,7 @@ fn create_csv_string(app: App) -> String {
                 row_value.push(',');
             }
         }
+        row_value.pop();
         row_value.push('\n');
         sum.push_str(&row_value);
         sum
@@ -398,5 +427,4 @@ fn save_data_to_file(app: App) -> std::io::Result<()>  {
 // TODO
 // add commands for inserting/deleting rows & columns
 // add save as feature
-// import static file on load
 // create input args
