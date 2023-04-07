@@ -329,11 +329,11 @@ fn get_max_col_width(app: &App, col: usize) -> usize {
 }
 
 fn add_value_to_cell(mut app: App, input: String) -> App {
-    
+
     let row: &mut Vec<String> = match app.data.get_mut(app.pos.0) {
         Some(data_row) => data_row,
         None => {
-            for _ in 0..app.pos.0 + 1 {
+            for _ in 0..=app.pos.0 {
                 app.data.push(Vec::new());
             }
             app.data.get_mut(app.pos.0).unwrap()
@@ -342,7 +342,7 @@ fn add_value_to_cell(mut app: App, input: String) -> App {
     let cell = match row.get_mut(app.pos.1) {
         Some(cell_data) => cell_data,
         None => {
-            for _ in 0..app.pos.1 + 1 {
+            for _ in 0..=app.pos.1 {
                 row.push(String::new());
             }
             row.get_mut(app.pos.1).unwrap()
@@ -353,12 +353,22 @@ fn add_value_to_cell(mut app: App, input: String) -> App {
     app
 }
 fn create_csv_string(app: App) -> String {
+    let lengths: Vec<usize> = app.data.iter().map(|row| row.len()).collect();
+    let num_cols = match lengths.iter().max() {
+        Some(value) => *value,
+        None => 0
+    };
     let output = app.data.iter().fold(String::new(), |mut sum, row| {
         let mut row_value = row.iter().fold(String::new(), |mut row_sum, cell| {
             row_sum.push_str(cell);
             row_sum.push(',');
             row_sum
         });
+        if row.len() < num_cols {
+            for _ in row.len()..num_cols {
+                row_value.push(',');
+            }
+        }
         row_value.push('\n');
         sum.push_str(&row_value);
         sum
