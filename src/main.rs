@@ -125,6 +125,17 @@ fn run_app<B: Backend>(
                 InputMode::Normal => match key.code {
                     KeyCode::Char('e') => {
                         app.input_mode = InputMode::Editing;
+                        match app.data.get(app.pos.0) {
+                            Some(row) => {
+                                match row.get(app.pos.1) {
+                                    Some(cell) => {
+                                        app.input.push_str(cell)
+                                    },
+                                    None => {}
+                                }
+                            },
+                            None => {} 
+                        }
                     },
                     KeyCode::Char('q') => {
                         let _ = save_data_to_file(app);
@@ -383,6 +394,4 @@ fn save_data_to_file(app: App) -> std::io::Result<()>  {
 }
 
 // TODO
-// file save needs to add commas for empty rows
-// when editing cell, value needs to be put into buffer
 // add commands for inserting/deleting rows & columns
