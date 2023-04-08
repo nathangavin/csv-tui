@@ -13,9 +13,9 @@ use crossterm::{
     event::{
         EnableMouseCapture, 
         DisableMouseCapture}};
+
 mod app;
-use app::load_file_into_app;
-use app::run_app;
+use app::App;
 
 /// App holds the state of the application
 
@@ -54,7 +54,7 @@ fn main() -> Result<(), io::Error>{
     })?; */
     
     //let app = App::default();
-    let app = match load_file_into_app(String::from("output.csv")) {
+    let app = match App::load_file_into_app(String::from("output.csv")) {
         Ok(app) => app,
         Err(_) => {
             disable_raw_mode()?;
@@ -62,7 +62,7 @@ fn main() -> Result<(), io::Error>{
             panic!();
         }
     };
-    let res = run_app(&mut terminal, app);
+    let res = app.run(&mut terminal);
 
     disable_raw_mode()?;
     execute!(
