@@ -39,7 +39,9 @@ pub struct App {
     /// Current input mode
     input_mode: InputMode,
     data: Vec<Vec<String>>,
-    pos: (usize, usize)
+    pos: (usize, usize),
+    saved: bool,
+    filename: Option<String>
 }
 
 impl Default for App {
@@ -48,7 +50,9 @@ impl Default for App {
             input: String::new(),
             input_mode: InputMode::Normal,
             data: Vec::new(),
-            pos: (0,0)
+            pos: (0,0),
+            saved: true,
+            filename: None 
         }
     }
 }
@@ -58,8 +62,8 @@ impl App {
         let mut app = App::default();
         let mut reader = csv::ReaderBuilder::new()
             .has_headers(false)
-            .from_path(filename)?;
-       
+            .from_path(&filename)?;
+        app.filename = Some(filename); 
        
         for row in reader.records() {
             app.data.push(row.unwrap().iter().map(|cell_value| {
@@ -75,7 +79,7 @@ impl App {
                 mut self,
                 terminal: &mut Terminal<B>
                 ) -> io::Result<()> {
-       
+
         loop {
             terminal.draw(|f| self.render_ui(f))?;
             if let Event::Key(key) = event::read()? {
@@ -99,6 +103,18 @@ impl App {
                             let _ = self.save_data_to_file();
                             return Ok(());
                         },
+                        KeyCode::Char('s') => {
+                            match &self.filename {
+                                Some(_) => {
+                                    let _ = self.save_data_to_file();
+                                },
+                                None => { todo!() }
+                            }
+                        },
+                        KeyCode::Char('a') => {
+                            todo!();
+                            let _ = self.save_data_to_file();
+                        },
                         KeyCode::Left | KeyCode::Char('h') => {
                             if self.pos.1 > 0 {
                                 self.pos.1 -= 1;
@@ -119,10 +135,9 @@ impl App {
                     },
                     InputMode::Editing => match key.code {
                         KeyCode::Enter => {
-                            //app.messages.push(app.input.drain(..).collect());
                             let current_input = self.input.drain(..).collect();
-                            //self = add_value_to_cell(self, current_input);
                             self.add_value_to_cell(current_input);
+                            self.saved = false;
                             self.input_mode = InputMode::Normal;
                         },
                         KeyCode::Char(char) => {
@@ -161,10 +176,16 @@ impl App {
                 vec![ Span::raw("Press "), 
                     Span::styled("q", 
                                  Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to exit, "),
+                    Span::raw(" to save and exit, "),
                     Span::styled("e", 
                                  Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to Start editing."),
+                    Span::raw(" to Start editing, "),
+                    Span::styled("s", 
+                                 Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to save, "),
+                    Span::styled("a", 
+                                 Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to save as new file.")
                 ],
                 Style::default().add_modifier(Modifier::RAPID_BLINK),
             ),
