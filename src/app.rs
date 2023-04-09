@@ -22,7 +22,7 @@ use tui::{
     style::{
         Style, 
         Modifier, 
-        Color}, terminal};
+        Color}};
 use crossterm::event::{
         self, 
         KeyCode, 
@@ -99,20 +99,20 @@ impl App {
                             let _ = self.save_data_to_file();
                             return Ok(());
                         },
-                        KeyCode::Left => {
+                        KeyCode::Left | KeyCode::Char('h') => {
                             if self.pos.1 > 0 {
                                 self.pos.1 -= 1;
                             }
                         },
-                        KeyCode::Right => {
+                        KeyCode::Right  | KeyCode::Char('l') => {
                             self.pos.1 += 1;
                         },
-                        KeyCode::Up => {
+                        KeyCode::Up | KeyCode::Char('k') => {
                             if self.pos.0 > 0 {
                                 self.pos.0 -= 1;
                             }
                         },
-                        KeyCode::Down => {
+                        KeyCode::Down | KeyCode::Char('j') => {
                             self.pos.0 += 1;
                         },
                         _ => {}
