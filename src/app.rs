@@ -113,8 +113,7 @@ impl App {
                             }
                         },
                         KeyCode::Char('a') => {
-                            todo!();
-                            let _ = self.save_data_to_file();
+                            self.input_mode = InputMode::Saving;
                         },
                         KeyCode::Left | KeyCode::Char('h') => {
                             if self.pos.1 > 0 {
@@ -153,7 +152,26 @@ impl App {
                         },
                         _ => {}
                     },
-                    InputMode::Saving => todo!()
+                    InputMode::Saving => match key.code {
+                        KeyCode::Enter => {
+                            let current_input = self.input.drain(..).collect();
+                            self.filename = Some(current_input);
+                            self.save_data_to_file();
+                            self.saved = true;
+                            self.input_mode = InputMode::Normal;
+                        },
+                        KeyCode::Char(char) => {
+                            self.input.push(char);
+                        },
+                        KeyCode::Backspace => {
+                            self.input.pop();
+                        },
+                        KeyCode::Esc => {
+                            self.input.clear();
+                            self.input_mode = InputMode::Normal;
+                        },
+                        _ => {}
+                    }
                 }
             }
         }
@@ -203,7 +221,19 @@ impl App {
                 ],
                 Style::default(),
             ),
-            InputMode::Saving => todo!()
+            InputMode::Saving => (
+                vec![
+                    Span::raw("Press "),
+                    Span::styled("Enter", 
+                                 Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to save file as, "),
+                    Span::styled("Esc",
+                                 Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to cancel saving")
+                    
+                ],
+                Style::default()
+            )
         };
         let mut text = Text::from(Spans::from(msg));
         text.patch_style(style);
