@@ -31,6 +31,7 @@ use crossterm::event::{
 pub enum InputMode {
     Normal,
     Editing,
+    Saving
 }
 
 pub struct App {
@@ -152,6 +153,7 @@ impl App {
                         },
                         _ => {}
                     },
+                    InputMode::Saving => todo!()
                 }
             }
         }
@@ -201,6 +203,7 @@ impl App {
                 ],
                 Style::default(),
             ),
+            InputMode::Saving => todo!()
         };
         let mut text = Text::from(Spans::from(msg));
         text.patch_style(style);
