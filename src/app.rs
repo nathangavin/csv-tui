@@ -101,21 +101,28 @@ impl App {
                             }
                         },
                         KeyCode::Char('q') => {
+                            // if saved = true, no need to save
                             match &self.filename {
                                 Some(_) => {
                                     let _ = self.save_data_to_file();
                                 },
                                 None => { todo!() }
                             }
+                            // only on a successful save should it quit, Other
+                            // wise it should should say saved failed and stay
+                            // in normal mode
                             return Ok(());
                         },
                         KeyCode::Char('s') => {
+                            // if saved = true, no need to save
                             match &self.filename {
                                 Some(_) => {
                                     let _ = self.save_data_to_file();
                                 },
                                 None => { todo!() }
                             }
+                            // file saved, message needs to show and then input
+                            // change to normal
                         },
                         KeyCode::Char('a') => {
                             self.input_mode = InputMode::Saving;
