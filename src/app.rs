@@ -1,4 +1,4 @@
-use std::{io, vec, fs};
+use std::{io::{self, Error as IO_Error, ErrorKind}, vec, fs, error::Error};
 use tui::{
     backend::
         Backend, 
@@ -101,7 +101,12 @@ impl App {
                             }
                         },
                         KeyCode::Char('q') => {
-                            let _ = self.save_data_to_file();
+                            match &self.filename {
+                                Some(_) => {
+                                    let _ = self.save_data_to_file();
+                                },
+                                None => { todo!() }
+                            }
                             return Ok(());
                         },
                         KeyCode::Char('s') => {
@@ -156,8 +161,13 @@ impl App {
                         KeyCode::Enter => {
                             let current_input = self.input.drain(..).collect();
                             self.filename = Some(current_input);
-                            self.save_data_to_file();
-                            self.saved = true;
+                            match self.save_data_to_file() {
+                                Ok(_) => self.saved = true,
+                                Err(_) => {
+                                    self.saved = false; 
+                                    todo!();
+                                }
+                            }
                             self.input_mode = InputMode::Normal;
                         },
                         KeyCode::Char(char) => {
@@ -309,6 +319,10 @@ impl App {
                             let cell = Cell::from(cell_value);
                             row_vec.push(cell);
                         }
+                    },
+                    InputMode::Saving => {
+                        let cell = Cell::from(cell_value);
+                        row_vec.push(cell);
                     }
                 }
             }
@@ -325,7 +339,7 @@ impl App {
         // position cursor
         match self.input_mode {
             InputMode::Normal => {},
-            InputMode::Editing => {
+            InputMode::Editing | InputMode::Saving => {
                 f.set_cursor(
                     chunks[1].x + self.input.len() as u16 + 1, 
                     chunks[1].y + 1
@@ -375,7 +389,19 @@ impl App {
     }
 
     fn save_data_to_file(&self) -> std::io::Result<()>  {
-        fs::write("./output.csv", self.create_csv_string())?;
+        match &self.filename {
+            Some(name) => {
+                if name.ends_with(".csv") {
+                    fs::write(name, self.create_csv_string())?;
+                } else {
+                    let new_name = format!("{}{}", name, ".csv");
+                    fs::write(new_name, self.create_csv_string())?;
+                }
+            },
+            None => {
+                return Err(IO_Error::new(ErrorKind::Other, "filename not set"));
+            }
+        }
         Ok(())
     }
 
