@@ -1,4 +1,4 @@
-use std::{io::{self, Error as IO_Error, ErrorKind}, vec, fs, error::Error};
+use std::{io::{self, Error as IO_Error, ErrorKind}, vec, fs };
 use tui::{
     backend::
         Backend, 
@@ -28,11 +28,16 @@ use crossterm::event::{
         KeyCode, 
         Event};
 
-pub enum InputMode {
+enum InputMode {
     Normal,
     Editing,
-    Saving
+    Saving,
+    Quiting,
+    QuitSaving,
+    Saved,
+    SavedFailed
 }
+
 
 pub struct App {
     /// Current value of the input box
@@ -101,25 +106,30 @@ impl App {
                             }
                         },
                         KeyCode::Char('q') => {
-                            // if saved = true, no need to save
-                            match &self.filename {
-                                Some(_) => {
-                                    let _ = self.save_data_to_file();
-                                },
-                                None => { todo!() }
-                            }
-                            // only on a successful save should it quit, Other
-                            // wise it should should say saved failed and stay
-                            // in normal mode
-                            return Ok(());
+                            self.input_mode = InputMode::Quiting;
                         },
                         KeyCode::Char('s') => {
-                            // if saved = true, no need to save
-                            match &self.filename {
-                                Some(_) => {
-                                    let _ = self.save_data_to_file();
-                                },
-                                None => { todo!() }
+                            if self.saved == true {
+                                self.input_mode = InputMode::Saved;
+                            } else {
+                                match &self.filename {
+                                    Some(_) => {
+                                        match self.save_data_to_file() {
+                                            Ok(_) => {
+                                                self.saved = true;
+                                                self.input_mode = 
+                                                    InputMode::Saved;
+                                            },
+                                            Err(_) => {
+                                                self.input_mode = 
+                                                    InputMode::SavedFailed;
+                                            }
+                                        }
+                                    },
+                                    None => { 
+                                        self.input_mode = InputMode::Saving;
+                                    }
+                                }
                             }
                             // file saved, message needs to show and then input
                             // change to normal
@@ -154,7 +164,6 @@ impl App {
                         },
                         KeyCode::Char(char) => {
                             self.input.push(char);
-                            //app = add_char_to_cell(app, char);
                         },
                         KeyCode::Backspace => {
                             self.input.pop();
@@ -169,13 +178,15 @@ impl App {
                             let current_input = self.input.drain(..).collect();
                             self.filename = Some(current_input);
                             match self.save_data_to_file() {
-                                Ok(_) => self.saved = true,
+                                Ok(_) => {
+                                    self.saved = true;
+                                    self.input_mode = InputMode::Saved;
+                                },
                                 Err(_) => {
                                     self.saved = false; 
-                                    todo!();
+                                    self.input_mode = InputMode::SavedFailed;
                                 }
                             }
-                            self.input_mode = InputMode::Normal;
                         },
                         KeyCode::Char(char) => {
                             self.input.push(char);
@@ -188,6 +199,74 @@ impl App {
                             self.input_mode = InputMode::Normal;
                         },
                         _ => {}
+                    },
+                    InputMode::Saved | InputMode::SavedFailed => {
+                        self.input_mode = InputMode::Normal;
+                    },
+                    InputMode::Quiting => {
+                       if self.saved == true {
+                           return Ok(());
+                       } else {
+                           match key.code {
+                               KeyCode::Char('y') => {
+                                   self.input_mode = InputMode::QuitSaving;
+                               },
+                               KeyCode::Char('n') => {
+                                   return Ok(());
+                               },
+                               _ => {}
+                           } 
+                       } 
+                    },
+                    InputMode::QuitSaving => {
+                        match &self.filename {
+                            Some(_) => {
+                                match self.save_data_to_file() {
+                                    Ok(_) => {
+                                        self.saved = true;
+                                        self.input_mode = 
+                                            InputMode::Quiting;
+                                    },
+                                    Err(_) => {
+                                        self.input_mode = 
+                                            InputMode::SavedFailed;
+                                    }
+                                }
+                            },
+                            None => { 
+                                match key.code {
+                                    KeyCode::Enter => {
+                                        let current_input = self.input
+                                                            .drain(..)
+                                                            .collect();
+                                        self.filename = Some(current_input);
+                                        match self.save_data_to_file() {
+                                            Ok(_) => {
+                                                self.saved = true;
+                                                self.input_mode = 
+                                                    InputMode::Quiting;
+                                            },
+                                            Err(_) => {
+                                                self.saved = false; 
+                                                self.input_mode = 
+                                                    InputMode::SavedFailed;
+                                            }
+                                        }
+                                    },
+                                    KeyCode::Char(char) => {
+                                        self.input.push(char);
+                                    },
+                                    KeyCode::Backspace => {
+                                        self.input.pop();
+                                    },
+                                    KeyCode::Esc => {
+                                        self.input.clear();
+                                        self.input_mode = InputMode::Normal;
+                                    },
+                                    _ => {}
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -207,13 +286,12 @@ impl App {
                     Constraint::Min(0), 
                 ].as_ref()) 
             .split(f.size()); 
-                //set up dynamic message at top level 
         let (msg, style) = match self.input_mode { 
             InputMode::Normal => ( 
                 vec![ Span::raw("Press "), 
                     Span::styled("q", 
                                  Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to save and exit, "),
+                    Span::raw(" to exit, "),
                     Span::styled("e", 
                                  Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to Start editing, "),
@@ -250,15 +328,82 @@ impl App {
                     
                 ],
                 Style::default()
-            )
+            ),
+            InputMode::QuitSaving => {
+                match self.filename {
+                    Some(_) => (
+                        vec![
+                            Span::raw("Saving. Press any Key to continue")
+                        ],
+                        Style::default()
+                    ),
+                    None => (
+                        vec![
+                            Span::raw("Press "),
+                            Span::styled("Enter", 
+                                         Style::default().add_modifier(Modifier::BOLD)),
+                            Span::raw(" to save file as, "),
+                            Span::styled("Esc",
+                                         Style::default().add_modifier(Modifier::BOLD)),
+                            Span::raw(" to cancel saving")
+                            
+                        ],
+                        Style::default()
+                    )
+                }
+            }
+            InputMode::Saved => (
+                vec![
+                    Span::raw("File saved successfully."),
+                    Span::raw("Press any Key to continue")
+                ],
+                Style::default()
+            ),
+            InputMode::SavedFailed => (
+                vec![
+                    Span::raw("File save failed. Try Saving as a new file."),
+                    Span::raw("Press any Key to continue")
+                ],
+                Style::default()
+            ),
+            InputMode::Quiting => {
+                if self.saved == true {
+                    (
+                        vec![
+                            Span::raw("Quiting. Press any Key to continue")
+                        ],
+                        Style::default()
+                    )
+                } else {
+                    (
+                        vec![
+                            Span::raw("File not saved."),
+                            Span::raw("Save file first? Press "),
+                            Span::styled("Y or N", 
+                                         Style::default()
+                                         .add_modifier(Modifier::BOLD)),
+                        ],
+                        Style::default()
+                    )
+                }
+            } 
         };
         let mut text = Text::from(Spans::from(msg));
         text.patch_style(style);
         let help_message = Paragraph::new(text);
         f.render_widget(help_message, chunks[0]);
         
+        let input_title = match self.input_mode {
+            InputMode::Normal => "Input - Normal",
+            InputMode::SavedFailed => "Input - Saved Failed",
+            InputMode::Quiting => "Input - Quiting",
+            InputMode::QuitSaving => "Input - Saving and Quiting",
+            InputMode::Editing => "Input - Editing",
+            InputMode::Saved => "Input - Saved",
+            InputMode::Saving => "Input - Saving"
+        };
         let input = Paragraph::new(self.input.as_ref())
-            .block(Block::default().borders(Borders::ALL).title("Input"));
+            .block(Block::default().borders(Borders::ALL).title(input_title));
         f.render_widget(input, chunks[1]);
 
         // build table
@@ -310,7 +455,9 @@ impl App {
                             let style = Style::default()
                                 .add_modifier(Modifier::RAPID_BLINK)
                                 .fg(Color::Yellow);
-                            let cell = Cell::from(Span::styled(cell_value, style));
+                            let cell = Cell::from(
+                                Span::styled(cell_value, style)
+                            );
                             row_vec.push(cell);
                         } else {
                             let cell = Cell::from(cell_value);
@@ -320,14 +467,20 @@ impl App {
                     InputMode::Editing => {
                         if self.pos.0 == row && self.pos.1 == col {
                             let style = Style::default().fg(Color::Yellow);
-                            let cell = Cell::from(Span::styled(cell_value, style));
+                            let cell = Cell::from(
+                                Span::styled(cell_value, style)
+                            );
                             row_vec.push(cell);
                         } else {
                             let cell = Cell::from(cell_value);
                             row_vec.push(cell);
                         }
                     },
-                    InputMode::Saving => {
+                    InputMode::Saving | 
+                        InputMode::Saved | 
+                        InputMode::SavedFailed |
+                        InputMode::Quiting |
+                        InputMode::QuitSaving => {
                         let cell = Cell::from(cell_value);
                         row_vec.push(cell);
                     }
@@ -335,9 +488,12 @@ impl App {
             }
             table_rows.push(Row::new(row_vec));
         }
-
+        let table_name = match &self.filename {
+            Some(name) => String::from(name),
+            None => String::from("Table"),
+        };
         let table = Table::new(table_rows)
-            .block(Block::default().title("Table").borders(Borders::ALL))
+            .block(Block::default().title(table_name).borders(Borders::ALL))
             .widths(&widths)
             .column_spacing(1)
             .highlight_style(Style::default().add_modifier(Modifier::BOLD));
@@ -345,13 +501,15 @@ impl App {
         
         // position cursor
         match self.input_mode {
-            InputMode::Normal => {},
-            InputMode::Editing | InputMode::Saving => {
+            InputMode::Normal | 
+                InputMode::Saved | 
+                InputMode::SavedFailed |
+                InputMode::Quiting => {},
+            InputMode::Editing | InputMode::Saving | InputMode::QuitSaving => {
                 f.set_cursor(
                     chunks[1].x + self.input.len() as u16 + 1, 
                     chunks[1].y + 1
                 )
-
             }
         }
     }
