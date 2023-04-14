@@ -59,7 +59,7 @@ fn main() -> Result<(), io::Error>{
         Err(_) => {
             disable_raw_mode()?;
             println!("Unable to load csv");
-            panic!();
+            return Ok(());
         }
     };
     let res = app.run(&mut terminal);
