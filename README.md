@@ -1,4 +1,4 @@
-# csv_editor
+# CSV TUI (csv_editor)
 
 This a lightweight tool using a Terminal User Interface (TUI), which allows opening, viewing, editing and saving of standard CSV files. 
 Written in Rust.
