@@ -58,3 +58,4 @@ fn main() -> Result<(), io::Error>{
 
 // TODO
 // add commands for inserting/deleting rows & columns
+// add scrolling
