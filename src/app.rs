@@ -47,7 +47,8 @@ pub struct App {
     data: Vec<Vec<String>>,
     pos: (usize, usize),
     saved: bool,
-    filename: Option<String>
+    filename: Option<String>,
+    page_number: usize
 }
 
 impl Default for App {
@@ -58,7 +59,8 @@ impl Default for App {
             data: Vec::new(),
             pos: (0,0),
             saved: true,
-            filename: None 
+            filename: None,
+            page_number: 0
         }
     }
 }
@@ -152,6 +154,14 @@ impl App {
                         },
                         KeyCode::Down | KeyCode::Char('j') => {
                             self.pos.0 += 1;
+                        },
+                        KeyCode::Char('d') => {
+                            self.page_number += 1;
+                        },
+                        KeyCode::Char('f') => {
+                            if self.page_number > 0 {
+                                self.page_number -= 1;
+                            }
                         },
                         _ => {}
                     },
@@ -272,8 +282,7 @@ impl App {
             }
         }
     }
-    
-    
+   
     fn render_ui<B: Backend>(&self, f: &mut Frame<B>) {
         // Set up top level page structure
         let chunks = Layout::default()
@@ -407,6 +416,8 @@ impl App {
         f.render_widget(input, chunks[1]);
 
         // build table
+        // calculate the width of the available data space, using f.size().width
+        todo!();
         let rows : usize = 50;
         let cols : usize = 50;
         let col_width: usize = 5;
@@ -597,6 +608,7 @@ impl App {
         
         output
     }
+
 }
 
 
