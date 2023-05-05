@@ -464,19 +464,22 @@ impl App {
         let mut first_row_vec = Vec::new();
         first_row_vec.push(Cell::from(""));
         for col in 0..cols {
-            first_row_vec.push(Cell::from(col.to_string()))
+            let num = (self.page_pos.1 * cols) + col;
+            first_row_vec.push(Cell::from(num.to_string()))
         }
         table_rows.push(Row::new(first_row_vec));
 
         for row in 0..rows {
             let mut row_vec = Vec::new();
-            row_vec.push(Cell::from(row.to_string()));
+            let row_num = (self.page_pos.0 * rows) + row;
+            row_vec.push(Cell::from(row_num.to_string()));
             let default_cell_value = "_____";
             for col in 0..cols {
+                let col_num = (self.page_pos.1 * cols) + col;
                 let mut cell_has_value = false;
-                let mut cell_value = String::from(match self.data.get(row) {
+                let mut cell_value = String::from(match self.data.get(row_num) {
                     Some(data_row) => {
-                        match data_row.get(col) {
+                        match data_row.get(col_num) {
                             Some(data_cell) => {
                                 if data_cell.len() > 0 {
                                     cell_has_value = true;
