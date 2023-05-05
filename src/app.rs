@@ -473,11 +473,13 @@ impl App {
             row_vec.push(Cell::from(row.to_string()));
             let default_cell_value = "_____";
             for col in 0..cols {
+                let mut cell_has_value = false;
                 let mut cell_value = String::from(match self.data.get(row) {
                     Some(data_row) => {
                         match data_row.get(col) {
                             Some(data_cell) => {
                                 if data_cell.len() > 0 {
+                                    cell_has_value = true;
                                     data_cell
                                 } else {
                                     default_cell_value
@@ -508,7 +510,14 @@ impl App {
                             );
                             row_vec.push(cell);
                         } else {
-                            let cell = Cell::from(cell_value);
+                            let style = if cell_has_value {
+                                Style::default()
+                            } else {
+                                Style::default().fg(Color::DarkGray)
+                            };
+                            let cell = Cell::from(
+                                Span::styled(cell_value, style)
+                            );
                             row_vec.push(cell);
                         }
                     }
@@ -520,7 +529,14 @@ impl App {
                             );
                             row_vec.push(cell);
                         } else {
-                            let cell = Cell::from(cell_value);
+                            let style = if cell_has_value {
+                                Style::default()
+                            } else {
+                                Style::default().fg(Color::DarkGray)
+                            };
+                            let cell = Cell::from(
+                                Span::styled(cell_value, style)
+                            );
                             row_vec.push(cell);
                         }
                     },
