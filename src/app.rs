@@ -460,6 +460,13 @@ impl App {
             // print!("{} ", max_width);
             widths.push(Constraint::Length(max_width as u16));
         }
+        
+        let mut first_row_vec = Vec::new();
+        first_row_vec.push(Cell::from(""));
+        for col in 0..cols {
+            first_row_vec.push(Cell::from(col.to_string()))
+        }
+        table_rows.push(Row::new(first_row_vec));
 
         for row in 0..rows {
             let mut row_vec = Vec::new();
