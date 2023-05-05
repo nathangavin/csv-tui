@@ -48,7 +48,7 @@ pub struct App {
     pos: (usize, usize),
     saved: bool,
     filename: Option<String>,
-    page_number: usize
+    page_pos:(usize, usize) 
 }
 
 impl Default for App {
@@ -60,7 +60,7 @@ impl Default for App {
             pos: (0,0),
             saved: true,
             filename: None,
-            page_number: 0
+            page_pos: (0,0)
         }
     }
 }
@@ -144,7 +144,7 @@ impl App {
                                 self.pos.1 -= 1;
                             }
                         },
-                        KeyCode::Right  | KeyCode::Char('l') => {
+                        KeyCode::Right | KeyCode::Char('l') => {
                             self.pos.1 += 1;
                         },
                         KeyCode::Up | KeyCode::Char('k') => {
@@ -155,12 +155,20 @@ impl App {
                         KeyCode::Down | KeyCode::Char('j') => {
                             self.pos.0 += 1;
                         },
-                        KeyCode::Char('d') => {
-                            self.page_number += 1;
+                        KeyCode::Char('L') => {
+                            self.page_pos.1 += 1;
                         },
-                        KeyCode::Char('f') => {
-                            if self.page_number > 0 {
-                                self.page_number -= 1;
+                        KeyCode::Char('H') => {
+                            if self.page_pos.1 > 0 {
+                                self.page_pos.1 -= 1;
+                            }
+                        },
+                        KeyCode::Char('J') => {
+                            self.page_pos.0 += 1;
+                        },
+                        KeyCode::Char('K') => {
+                            if self.page_pos.0 > 0 {
+                                self.page_pos.0 -= 1;
                             }
                         },
                         _ => {}
@@ -285,13 +293,15 @@ impl App {
    
     fn render_ui<B: Backend>(&self, f: &mut Frame<B>) {
         // Set up top level page structure
+        let info_row_height = 1;
+        let input_box_height = 3;
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(0)
             .constraints(
                 [
-                    Constraint::Length(1),
-                    Constraint::Length(3), 
+                    Constraint::Length(info_row_height),
+                    Constraint::Length(input_box_height), 
                     Constraint::Min(0), 
                 ].as_ref()) 
             .split(f.size()); 
@@ -416,13 +426,33 @@ impl App {
         f.render_widget(input, chunks[1]);
 
         // build table
-        // calculate the width of the available data space, using f.size().width
-        todo!();
-        let rows : usize = 50;
-        let cols : usize = 50;
         let col_width: usize = 5;
-        let mut table_rows = Vec::new();
+        // Calculating number of columns that can fit on screen
+        let border_width = 1;
+        let row_num_col_width = col_width as u16 + 1;
+        let terminal_width = f.size().width;
+        let width_to_remove = (border_width*2) + row_num_col_width;
+        let data_width = if terminal_width > width_to_remove {
+            terminal_width - width_to_remove
+        } else { 
+            0
+        };
+        let cols = usize::from(data_width / 6);
+        
+        let terminal_height = f.size().height;
+        let index_row_height = 1;
+        let height_to_remove = info_row_height 
+                                + input_box_height 
+                                + (border_width * 2)
+                                + index_row_height;
+        let data_height = if terminal_height > height_to_remove {
+            terminal_height - height_to_remove
+        } else {
+            0
+        };
+        let rows = usize::from(data_height);
 
+        let mut table_rows = Vec::new();
         let mut widths = Vec::new();
         widths.push(Constraint::Length(col_width as u16));
         for col in 1..=cols {
