@@ -104,9 +104,15 @@ impl App {
                     InputMode::Normal => match key.code {
                         KeyCode::Char('e') => {
                             self.input_mode = InputMode::Editing;
-                            match self.data.get(self.pos.row) {
+                            let data_row_pos = (self.page_size.height 
+                                                * self.page_pos.row) 
+                                                + self.pos.row;
+                            let data_col_pos = (self.page_size.width
+                                                * self.page_pos.col) 
+                                                + self.pos.col;
+                            match self.data.get(data_row_pos) {
                                 Some(row) => {
-                                    match row.get(self.pos.col) {
+                                    match row.get(data_col_pos) {
                                         Some(cell) => {
                                             self.input.push_str(cell)
                                         },
@@ -564,10 +570,14 @@ impl App {
             }
             table_rows.push(Row::new(row_vec));
         }
+        let current_size_string = format!("Rows - {}, Cols - {}", 
+                                            self.data.len(),
+                                            self.get_data_width());
         let table_name = match &self.filename {
             Some(name) => String::from(name),
             None => String::from("Table"),
-        };
+        } + " - " + &current_size_string;
+
         let table = Table::new(table_rows)
             .block(Block::default().title(table_name).borders(Borders::ALL))
             .widths(&widths)
@@ -614,6 +624,7 @@ impl App {
             }
         };
         *cell = input;
+        self.remove_unneeded_rows();
     }
 
     fn get_max_col_width(&self, col: usize) -> usize {
@@ -630,6 +641,49 @@ impl App {
             }
         }
        max_width 
+    }
+    
+    fn get_data_width(&self) -> usize {
+        match self.data.get(0) {
+            Some(row) => row.len(),
+            None => 0 
+        }
+    }
+
+    fn remove_unneeded_rows(&mut self) {
+        let mut largest_row_col = (0,0);
+        for (row_pos,row) in self.data.iter().enumerate() {
+            let mut has_data = false;
+            for (col_pos,col) in row.iter().enumerate() {
+                if col.len() > 0 {
+                    largest_row_col.1 = if col_pos > largest_row_col.1 {
+                        col_pos
+                    } else {
+                        largest_row_col.1
+                    };
+                    has_data = true;
+                }
+            }
+            if has_data {
+                largest_row_col.0 = if row_pos > largest_row_col.0 {
+                    row_pos
+                } else {
+                    largest_row_col.0
+                };
+            }
+        }
+        for pos in ((largest_row_col.0 + 1)..self.data.len()).rev() {
+            if pos < self.data.len() {
+                self.data.remove(pos);
+            }
+        }
+        for row in self.data.iter_mut() {
+            for pos in ((largest_row_col.1 + 1)..row.len()).rev() {
+                if pos < row.len() {
+                    row.remove(pos);
+                }
+            }
+        }
     }
 
     fn save_data_to_file(&self) -> std::io::Result<()>  {
