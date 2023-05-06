@@ -38,17 +38,25 @@ enum InputMode {
     SavedFailed
 }
 
-
+struct Position {
+    row: usize,
+    col: usize
+}
+struct Size {
+    width: usize,
+    height: usize
+}
 pub struct App {
     /// Current value of the input box
     input: String,
     /// Current input mode
     input_mode: InputMode,
     data: Vec<Vec<String>>,
-    pos: (usize, usize),
+    pos: Position,
     saved: bool,
     filename: Option<String>,
-    page_pos:(usize, usize) 
+    page_pos: Position,
+    page_size: Size
 }
 
 impl Default for App {
@@ -57,10 +65,11 @@ impl Default for App {
             input: String::new(),
             input_mode: InputMode::Normal,
             data: Vec::new(),
-            pos: (0,0),
+            pos: Position { row: 0, col: 0 },
             saved: true,
             filename: None,
-            page_pos: (0,0)
+            page_pos: Position { row: 0, col: 0 },
+            page_size: Size { width: 0, height: 0 } 
         }
     }
 }
@@ -95,9 +104,9 @@ impl App {
                     InputMode::Normal => match key.code {
                         KeyCode::Char('e') => {
                             self.input_mode = InputMode::Editing;
-                            match self.data.get(self.pos.0) {
+                            match self.data.get(self.pos.row) {
                                 Some(row) => {
-                                    match row.get(self.pos.1) {
+                                    match row.get(self.pos.col) {
                                         Some(cell) => {
                                             self.input.push_str(cell)
                                         },
@@ -140,35 +149,35 @@ impl App {
                             self.input_mode = InputMode::Saving;
                         },
                         KeyCode::Left | KeyCode::Char('h') => {
-                            if self.pos.1 > 0 {
-                                self.pos.1 -= 1;
+                            if self.pos.col > 0 {
+                                self.pos.col -= 1;
                             }
                         },
                         KeyCode::Right | KeyCode::Char('l') => {
-                            self.pos.1 += 1;
+                            self.pos.col += 1;
                         },
                         KeyCode::Up | KeyCode::Char('k') => {
-                            if self.pos.0 > 0 {
-                                self.pos.0 -= 1;
+                            if self.pos.row > 0 {
+                                self.pos.row -= 1;
                             }
                         },
                         KeyCode::Down | KeyCode::Char('j') => {
-                            self.pos.0 += 1;
+                            self.pos.row += 1;
                         },
                         KeyCode::Char('L') => {
-                            self.page_pos.1 += 1;
+                            self.page_pos.col += 1;
                         },
                         KeyCode::Char('H') => {
-                            if self.page_pos.1 > 0 {
-                                self.page_pos.1 -= 1;
+                            if self.page_pos.col > 0 {
+                                self.page_pos.col -= 1;
                             }
                         },
                         KeyCode::Char('J') => {
-                            self.page_pos.0 += 1;
+                            self.page_pos.row += 1;
                         },
                         KeyCode::Char('K') => {
-                            if self.page_pos.0 > 0 {
-                                self.page_pos.0 -= 1;
+                            if self.page_pos.row > 0 {
+                                self.page_pos.row -= 1;
                             }
                         },
                         _ => {}
@@ -291,7 +300,7 @@ impl App {
         }
     }
    
-    fn render_ui<B: Backend>(&self, f: &mut Frame<B>) {
+    fn render_ui<B: Backend>(&mut self, f: &mut Frame<B>) {
         // Set up top level page structure
         let info_row_height = 1;
         let input_box_height = 3;
@@ -438,7 +447,7 @@ impl App {
             0
         };
         let cols = usize::from(data_width / 6);
-        
+        self.page_size.width = cols;
         let terminal_height = f.size().height;
         let index_row_height = 1;
         let height_to_remove = info_row_height 
@@ -451,7 +460,7 @@ impl App {
             0
         };
         let rows = usize::from(data_height);
-
+        self.page_size.height = rows;
         let mut table_rows = Vec::new();
         let mut widths = Vec::new();
         widths.push(Constraint::Length(col_width as u16));
@@ -464,18 +473,18 @@ impl App {
         let mut first_row_vec = Vec::new();
         first_row_vec.push(Cell::from(""));
         for col in 0..cols {
-            let num = (self.page_pos.1 * cols) + col;
+            let num = (self.page_pos.col * cols) + col;
             first_row_vec.push(Cell::from(num.to_string()))
         }
         table_rows.push(Row::new(first_row_vec));
 
         for row in 0..rows {
             let mut row_vec = Vec::new();
-            let row_num = (self.page_pos.0 * rows) + row;
+            let row_num = (self.page_pos.row * rows) + row;
             row_vec.push(Cell::from(row_num.to_string()));
             let default_cell_value = "_____";
             for col in 0..cols {
-                let col_num = (self.page_pos.1 * cols) + col;
+                let col_num = (self.page_pos.col * cols) + col;
                 let mut cell_has_value = false;
                 let mut cell_value = String::from(match self.data.get(row_num) {
                     Some(data_row) => {
@@ -504,7 +513,7 @@ impl App {
 
                 match self.input_mode {
                     InputMode::Normal => {
-                        if self.pos.0 == row && self.pos.1 == col {
+                        if self.pos.row == row && self.pos.col == col {
                             let style = Style::default()
                                 .add_modifier(Modifier::RAPID_BLINK)
                                 .fg(Color::Yellow);
@@ -525,7 +534,7 @@ impl App {
                         }
                     }
                     InputMode::Editing => {
-                        if self.pos.0 == row && self.pos.1 == col {
+                        if self.pos.row == row && self.pos.col == col {
                             let style = Style::default().fg(Color::Yellow);
                             let cell = Cell::from(
                                 Span::styled(cell_value, style)
@@ -582,23 +591,26 @@ impl App {
     }
 
     fn add_value_to_cell(&mut self, input: String) {
-
-        let row: &mut Vec<String> = match self.data.get_mut(self.pos.0) {
+        let row_pos = (self.page_size.height * self.page_pos.row) 
+                        + self.pos.row;
+        let row: &mut Vec<String> = match self.data.get_mut(row_pos) {
             Some(data_row) => data_row,
             None => {
-                for _ in 0..=self.pos.0 {
+                for _ in 0..=row_pos {
                     self.data.push(Vec::new());
                 }
-                self.data.get_mut(self.pos.0).unwrap()
+                self.data.get_mut(row_pos).unwrap()
             }
         };
-        let cell = match row.get_mut(self.pos.1) {
+        let col_pos = (self.page_size.width * self.page_pos.col)
+                        + self.pos.col;
+        let cell = match row.get_mut(col_pos) {
             Some(cell_data) => cell_data,
             None => {
-                for _ in 0..=self.pos.1 {
+                for _ in 0..=col_pos {
                     row.push(String::new());
                 }
-                row.get_mut(self.pos.1).unwrap()
+                row.get_mut(col_pos).unwrap()
             }
         };
         *cell = input;
