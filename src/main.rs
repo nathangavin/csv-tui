@@ -62,4 +62,7 @@ fn main() -> Result<(), io::Error>{
 
 // TODO
 // add commands for inserting/deleting rows & columns
-// add scrolling
+//      add a 2 step process, where you have a column select button and
+//      row select button, and the row/column highlights, and then either
+//      have i for insert row/column, and r for remove row/column
+// add button for showing commands
