@@ -10,6 +10,7 @@ Written in Rust.
 
 ## Current TODO List
 
-- implement scrolling for files which dont fit on page
-- implement more functions
-  - commands to add/remove rows and columns
+- add separate page for tool functions/commands
+- split app.rs into model view controller logic
+    - add debugview
+    
