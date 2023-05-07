@@ -73,3 +73,4 @@ fn main() -> Result<(), io::Error>{
 
 // TODO
 // add button for showing commands
+// split app model code and app view code, in order to add debugging viewmode

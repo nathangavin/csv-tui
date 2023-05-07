@@ -95,7 +95,6 @@ impl App {
             app.data.push(row.unwrap().iter().map(|cell_value| {
                 String::from(cell_value)
             }).collect());
-            //println!("{:?}", row.unwrap());
         }
 
         Ok(app)
@@ -616,7 +615,6 @@ impl App {
         widths.push(Constraint::Length(col_width as u16));
         for col in 1..=cols {
             let max_width = self.get_max_col_width(col-1);
-            // print!("{} ", max_width);
             widths.push(Constraint::Length(max_width as u16));
         }
         
