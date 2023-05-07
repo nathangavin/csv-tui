@@ -31,13 +31,22 @@ use crossterm::event::{
 enum InputMode {
     Normal,
     Editing,
+    SelectingRow,
+    SelectingCol,
     Saving,
     Quiting,
     QuitSaving,
     Saved,
     SavedFailed
 }
-
+enum InsertMode {
+    Adding,
+    Removing
+}
+pub enum RunningMode {
+    Normal,
+    Debug
+}
 struct Position {
     row: usize,
     col: usize
@@ -94,11 +103,12 @@ impl App {
 
     pub fn run<B: Backend>(
                 mut self,
-                terminal: &mut Terminal<B>
+                terminal: &mut Terminal<B>,
+                running_mode: RunningMode
                 ) -> io::Result<()> {
 
         loop {
-            terminal.draw(|f| self.render_ui(f))?;
+            terminal.draw(|f| self.render_ui(f, &running_mode))?;
             if let Event::Key(key) = event::read()? {
                 match self.input_mode {
                     InputMode::Normal => match key.code {
@@ -185,6 +195,12 @@ impl App {
                             if self.page_pos.row > 0 {
                                 self.page_pos.row -= 1;
                             }
+                        },
+                        KeyCode::Char('r') => {
+                            self.input_mode = InputMode::SelectingRow;
+                        },
+                        KeyCode::Char('c') => {
+                            self.input_mode = InputMode::SelectingCol;
                         },
                         _ => {}
                     },
@@ -300,13 +316,108 @@ impl App {
                                 }
                             }
                         }
-                    }
+                    },
+                    InputMode::SelectingRow | InputMode::SelectingCol => {
+                        match key.code {
+                            KeyCode::Char('i') => {
+                                self.insert_remove_row_col(
+                                    InsertMode::Adding
+                                );
+                                self.saved = false;
+                                self.input_mode = InputMode::Normal;
+                            },
+                            KeyCode::Char('r') => {
+                                self.insert_remove_row_col(
+                                    InsertMode::Removing
+                                );
+                                self.saved = false;
+                                self.input_mode = InputMode::Normal;
+                            },
+                            KeyCode::Esc => {
+                                self.input_mode = InputMode::Normal;
+                            },
+                            _ => {} 
+                        }
+                    },
                 }
             }
         }
     }
+    
+    fn insert_remove_row_col(&mut self, insert_mode: InsertMode) {
+        match self.input_mode {
+            InputMode::SelectingCol => {
+                let col_pos = (self.page_size.width * self.page_pos.col)
+                                    + self.pos.col;
+                match insert_mode {
+                    InsertMode::Adding => {
+                        self.insert_col(col_pos);
+                    },
+                    InsertMode::Removing => {
+                        self.remove_col(col_pos);
+                    }
+                }
+            },
+            InputMode::SelectingRow => {
+                let row_pos = (self.page_size.height * self.page_pos.row)
+                                    + self.pos.row;
+                match insert_mode {
+                    InsertMode::Adding => {
+                        self.insert_row(row_pos);
+                    },
+                    InsertMode::Removing => {
+                        self.remove_row(row_pos);
+                    }
+                }
+            },
+            _ => {}
+        }
+    }
+
+    fn insert_row(&mut self, row_pos: usize) {
+        if row_pos < self.data.len() {
+            self.data.insert(row_pos, (0..self.get_max_row_length())
+                                        .into_iter()
+                                        .map(|_| String::from(""))
+                                        .collect());
+        } 
+    }
+
+    fn get_max_row_length(&self) -> usize {
+        let mut max_length = 0;
+        for row in self.data.iter() {
+            if max_length < row.len() {
+                max_length = row.len();
+            }
+        };
+        max_length
+    }
+
+    fn remove_row(&mut self, row_pos: usize) {
+        if row_pos < self.data.len() {
+            self.data.remove(row_pos);
+        }
+    }
+
+    fn insert_col(&mut self, col_pos: usize) {
+        for row in self.data.iter_mut() {
+            if col_pos < row.len() {
+                row.insert(col_pos, String::from(""));
+            }
+        }
+    }
    
-    fn render_ui<B: Backend>(&mut self, f: &mut Frame<B>) {
+    fn remove_col(&mut self, col_pos: usize) {
+        for row in self.data.iter_mut() {
+            if col_pos < row.len() {
+                row.remove(col_pos);
+            }
+        }
+    }
+
+    fn render_ui<B: Backend>(&mut self, 
+                                f: &mut Frame<B>, 
+                                running_mode: &RunningMode) {
         // Set up top level page structure
         let info_row_height = 1;
         let input_box_height = 3;
@@ -420,7 +531,38 @@ impl App {
                         Style::default()
                     )
                 }
-            } 
+            },
+            InputMode::SelectingRow => (
+                vec![
+                    Span::raw("Press "),
+                    Span::styled("i", 
+                                 Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to insert row, "),
+                    Span::styled("r",
+                                 Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to remove row, "),
+                    Span::styled("Esc",
+                                 Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to cancel"),
+                ],
+                Style::default()
+            ),
+            InputMode::SelectingCol => (
+                vec![
+                    Span::raw("Press "),
+                    Span::styled("i", 
+                                 Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to insert column, "),
+                    Span::styled("r",
+                                 Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to remove column, "),
+                    Span::styled("Esc",
+                                 Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to cancel"),
+                ],
+                Style::default()
+            )
+            
         };
         let mut text = Text::from(Spans::from(msg));
         text.patch_style(style);
@@ -434,7 +576,9 @@ impl App {
             InputMode::QuitSaving => "Input - Saving and Quiting",
             InputMode::Editing => "Input - Editing",
             InputMode::Saved => "Input - Saved",
-            InputMode::Saving => "Input - Saving"
+            InputMode::Saving => "Input - Saving",
+            InputMode::SelectingRow => "Input - Row Selected",
+            InputMode::SelectingCol => "Input - Column Selected"
         };
         let input = Paragraph::new(self.input.as_ref())
             .block(Block::default().borders(Borders::ALL).title(input_title));
@@ -563,8 +707,46 @@ impl App {
                         InputMode::SavedFailed |
                         InputMode::Quiting |
                         InputMode::QuitSaving => {
-                        let cell = Cell::from(cell_value);
-                        row_vec.push(cell);
+                            let cell = Cell::from(cell_value);
+                            row_vec.push(cell);
+                    },
+                    InputMode::SelectingCol => {
+                        if self.pos.col == col {
+                            let style = Style::default().fg(Color::Yellow);
+                            let cell = Cell::from(
+                                Span::styled(cell_value, style)
+                            );
+                            row_vec.push(cell);
+                        } else {
+                            let style = if cell_has_value {
+                                Style::default()
+                            } else {
+                                Style::default().fg(Color::DarkGray)
+                            };
+                            let cell = Cell::from(
+                                Span::styled(cell_value, style)
+                            );
+                            row_vec.push(cell);
+                        }
+                    },
+                    InputMode::SelectingRow => {
+                        if self.pos.row == row {
+                            let style = Style::default().fg(Color::Yellow);
+                            let cell = Cell::from(
+                                Span::styled(cell_value, style)
+                            );
+                            row_vec.push(cell);
+                        } else {
+                            let style = if cell_has_value {
+                                Style::default()
+                            } else {
+                                Style::default().fg(Color::DarkGray)
+                            };
+                            let cell = Cell::from(
+                                Span::styled(cell_value, style)
+                            );
+                            row_vec.push(cell);
+                        }
                     }
                 }
             }
@@ -583,14 +765,25 @@ impl App {
             .widths(&widths)
             .column_spacing(1)
             .highlight_style(Style::default().add_modifier(Modifier::BOLD));
-        f.render_widget(table,chunks[2]);
+        let debug_str = format!("{:?}", self.data);
+        let debug_display = Paragraph::new(debug_str);
+        match running_mode {
+            RunningMode::Normal => {
+                f.render_widget(table,chunks[2]);
+            },
+            RunningMode::Debug => {
+                f.render_widget(debug_display, chunks[2]);
+            }
+        }
         
         // position cursor
         match self.input_mode {
             InputMode::Normal | 
                 InputMode::Saved | 
                 InputMode::SavedFailed |
-                InputMode::Quiting => {},
+                InputMode::Quiting |
+                InputMode::SelectingCol |
+                InputMode::SelectingRow => {},
             InputMode::Editing | InputMode::Saving | InputMode::QuitSaving => {
                 f.set_cursor(
                     chunks[1].x + self.input.len() as u16 + 1, 

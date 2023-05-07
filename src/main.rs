@@ -15,6 +15,7 @@ use crossterm::{
         DisableMouseCapture}};
 
 mod app;
+use app::RunningMode;
 use app::App;
 
 fn main() -> Result<(), io::Error>{
@@ -39,12 +40,23 @@ fn main() -> Result<(), io::Error>{
     } else {
         app = App::default();
     }
+    let running_mode = match args.get(2) {
+        Some(flag) => {
+            match flag.as_str() {
+                "-debug" => {RunningMode::Debug},
+                _ => {RunningMode::Normal}
+            }
+        },
+        None => {
+            RunningMode::Normal
+        }
+    };
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend  = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    let res = app.run(&mut terminal);
+    let res = app.run(&mut terminal, running_mode);
 
     disable_raw_mode()?;
     execute!(
@@ -56,13 +68,8 @@ fn main() -> Result<(), io::Error>{
     if let Err(err) = res {
         println!("{:?}", err)
     }
-    println!("{:?}", terminal.size());
     Ok(())
 }
 
 // TODO
-// add commands for inserting/deleting rows & columns
-//      add a 2 step process, where you have a column select button and
-//      row select button, and the row/column highlights, and then either
-//      have i for insert row/column, and r for remove row/column
 // add button for showing commands
