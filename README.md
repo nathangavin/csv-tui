@@ -1,4 +1,4 @@
-# CSV TUI (csv_editor)
+# CSV TUI
 ![image](https://user-images.githubusercontent.com/21207405/232260046-322dc2a8-aaf4-461f-9da7-e0be2fc5875c.png)
 
 
