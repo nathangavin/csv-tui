@@ -14,6 +14,9 @@ use crossterm::{
         EnableMouseCapture, 
         DisableMouseCapture}};
 
+mod view;
+mod model;
+mod controller;
 mod app;
 use app::RunningMode;
 use app::App;

@@ -1,7 +1,6 @@
 use std::{io::{self, Error as IO_Error, ErrorKind}, vec, fs };
 use tui::{
-    backend::
-        Backend, 
+    backend::Backend, 
     Terminal, 
     widgets::{
         Row, 
