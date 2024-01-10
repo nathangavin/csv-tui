@@ -3,14 +3,39 @@ use crate::controller::defaultController::InputMode;
 use crate::controller::defaultController::InsertMode;
 
 pub struct Position {
-    pub row: usize,
-    pub col: usize
+    row: usize,
+    col: usize
+}
+
+/*
+impl Copy for Position {}
+impl Clone for Position {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+*/
+impl Position {
+    pub fn row(&self) -> usize {
+        self.row
+    }
+    pub fn col(&self) -> usize {
+        self.col
+    }
 }
 
 pub struct Size {
     width: usize,
     height: usize
 }
+/*
+impl Copy for Size {}
+impl Clone for Size {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+*/
 
 pub struct DefaultAppModel {
     /// Current value of the input box
@@ -41,6 +66,128 @@ impl Default for DefaultAppModel {
 }
 
 impl DefaultAppModel {
+
+    pub fn get_filename(&self) -> &Option<String> {
+        &self.filename
+    }
+
+    pub fn get_current_pos(&self) -> &Position {
+        &self.pos
+    }
+
+    pub fn increment_current_pos_row(&mut self) {
+        self.pos.row += 1;
+    }
+    
+    pub fn decrement_current_pos_row(&mut self) {
+        if self.pos.row > 0 {
+            self.pos.row -= 1;
+        }
+    }
+
+    pub fn increment_current_pos_col(&mut self) {
+        self.pos.col += 1;
+    }
+    
+    pub fn decrement_current_pos_col(&mut self) {
+        if self.pos.col > 0 {
+            self.pos.col -= 1;
+        }
+    }
+
+    pub fn get_current_page_pos(&self) -> &Position {
+        &self.page_pos
+    }
+
+    pub fn increment_current_page_pos_row(&mut self) {
+        self.page_pos.row += 1;
+    }
+    
+    pub fn decrement_current_page_pos_row(&mut self) {
+        if self.page_pos.row > 0 {
+            self.page_pos.row -= 1;
+        }
+    }
+
+    pub fn increment_current_page_pos_col(&mut self) {
+        self.page_pos.col += 1;
+    }
+    
+    pub fn decrement_current_page_pos_col(&mut self) {
+        if self.page_pos.col > 0 {
+            self.page_pos.col -= 1;
+        }
+    }
+
+    pub fn append_str_current_input(&mut self, string_value : String) {
+        self.input.push_str(&string_value);
+    }
+
+    pub fn append_char_current_input(&mut self, char_value : char) {
+        self.input.push(char_value);
+    }
+
+    pub fn pop_current_input(&mut self) -> Option<char> {
+        self.input.pop()
+    }
+
+    fn drain_input(&mut self) -> String {
+        self.input.drain(..).collect()
+    }
+
+    pub fn clear_input(&mut self) {
+        self.input.clear();
+    }
+
+    pub fn set_input_to_current_pos(&mut self) {
+        let current_input = self.drain_input();
+        self.add_value_to_cell(current_input);
+        self.saved = false;
+    }
+
+    pub fn get_input(&self) -> &str {
+        self.input.as_str()
+    }
+
+    pub fn get_data(&self) -> &Vec<Vec<String>> {
+        &self.data
+    }
+
+    pub fn is_in_saved_state(&self) -> bool {
+        self.saved 
+    }
+
+    pub fn set_saved(&mut self, is_saved: bool) {
+        self.saved = is_saved;
+    }
+
+    pub fn get_input_mode(&self) -> &InputMode {
+        &self.input_mode
+    }
+
+    pub fn set_input_node(&mut self, input_node: InputMode) {
+        self.input_mode = input_node;
+    }
+
+    pub fn set_filename_to_input(&mut self) {
+        let current_input = self.input.drain(..).collect();
+        self.filename = Some(current_input);
+    }
+
+    pub fn set_cell_value_current_input(&mut self, row: usize, col: usize) {
+        match self.data.get(row) {
+            Some(row) => {
+                match row.get(col) {
+                    Some(cell) => {
+                        self.append_str_current_input(cell.to_string());
+                    },
+                    None => {}
+                }
+            },
+            None => {} 
+        }
+    }
+
     pub fn load_file_into_app(filename: String) -> Result<DefaultAppModel, io::Error> {
         let mut app = DefaultAppModel::default();
         let mut reader = csv::ReaderBuilder::new()
@@ -57,27 +204,7 @@ impl DefaultAppModel {
         Ok(app)
     }
 
-    pub fn set_page_size_width(&mut self, width: usize) {
-        self.page_size.width = width;
-    }
-
-    pub fn set_page_size_height(&mut self, height: usize) {
-        self.page_size.height = height;
-    }
-
-    pub fn get_filename(&self) -> Option<String> {
-        self.filename
-    }
-
-    pub fn get_current_pos(&self) -> Position {
-        self.pos
-    }
-
-    pub fn get_current_page_pos(&self) -> Position {
-        self.page_pos
-    }
-
-    fn insert_remove_row_col(&mut self, insert_mode: InsertMode) {
+    pub fn insert_remove_row_col(&mut self, insert_mode: InsertMode) {
         match self.input_mode {
             InputMode::SelectingCol => {
                 let col_pos = (self.page_size.width * self.page_pos.col)
@@ -105,25 +232,6 @@ impl DefaultAppModel {
             },
             _ => {}
         }
-    }
-
-    pub fn get_data(&self) -> Vec<Vec<String>> {
-        self.data
-    }
-
-    pub fn get_input(&self) -> &str {
-        self.input.as_str()
-    }
-
-    pub fn has_filename(&self) -> bool {
-        match self.filename {
-            Some(_) => true,
-            None => false
-        }
-    }
-    
-    pub fn is_in_saved_state(&self) -> bool {
-        self.saved 
     }
 
     fn insert_row(&mut self, row_pos: usize) {
@@ -210,12 +318,6 @@ impl DefaultAppModel {
        max_width 
     }
     
-    pub fn get_data_width(&self) -> usize {
-        match self.data.get(0) {
-            Some(row) => row.len(),
-            None => 0 
-        }
-    }
 
     fn remove_unneeded_rows(&mut self) {
         let mut largest_row_col = (0,0);
@@ -253,7 +355,7 @@ impl DefaultAppModel {
         }
     }
 
-    fn save_data_to_file(&self) -> std::io::Result<()>  {
+    pub fn save_data_to_file(&self) -> std::io::Result<()>  {
         match &self.filename {
             Some(name) => {
                 if name.ends_with(".csv") {
@@ -297,13 +399,4 @@ impl DefaultAppModel {
         
         output
     }
-
-    pub fn get_input_mode(&self) -> InputMode {
-        self.input_mode
-    }
-
-    pub fn set_input_node(&mut self, input_node: InputMode) {
-        self.input_mode = input_node;
-    }
-
 }

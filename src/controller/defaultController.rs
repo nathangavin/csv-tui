@@ -1,4 +1,4 @@
-use std::{io::{self, Error as IO_Error, ErrorKind}, fs };
+use std::io;
 use tui::{
     backend::Backend,
     Terminal};
@@ -38,55 +38,62 @@ pub fn run<B: Backend>(
             ) -> io::Result<()> {
 
     loop {
+        
+        let app_is_saved = app.is_in_saved_state();
+        let app_filename = app.get_filename();
+        let app_pos = app.get_current_pos();
+
+        let info_row_height = 1;
+        let input_box_height = 3;
+        let col_width: usize = 5;
+        // Calculating number of columns that can fit on screen
+        let border_width = 1;
+        let row_num_col_width = col_width as u16 + 1;
+        let terminal_width = terminal.size()?.width;
+        let width_to_remove = (border_width*2) + row_num_col_width;
+        let data_width = if terminal_width > width_to_remove {
+            terminal_width - width_to_remove
+        } else { 
+            0
+        };
+        let cols = usize::from(data_width / 6);
+        let page_width = cols;
+        let terminal_height = terminal.size()?.height;
+        let index_row_height = 1;
+        let height_to_remove = info_row_height 
+                                + input_box_height 
+                                + (border_width * 2)
+                                + index_row_height;
+        let data_height = if terminal_height > height_to_remove {
+            terminal_height - height_to_remove
+        } else {
+            0
+        };
+
+        let rows = usize::from(data_height);
+        let page_height = rows;
+
+        let mut max_widths : Vec<usize> = Vec::new();
+
+        max_widths.push(col_width);
+        for col in 1..cols {
+            max_widths.push(app.get_max_col_width(col-1));
+        } 
+
         terminal.draw(|f| {
 
-            let info_row_height = 1;
-            let input_box_height = 3;
-            let col_width: usize = 5;
-            // Calculating number of columns that can fit on screen
-            let border_width = 1;
-            let row_num_col_width = col_width as u16 + 1;
-            let terminal_width = f.size().width;
-            let width_to_remove = (border_width*2) + row_num_col_width;
-            let data_width = if terminal_width > width_to_remove {
-                terminal_width - width_to_remove
-            } else { 
-                0
-            };
-            let cols = usize::from(data_width / 6);
-            app.set_page_size_width(cols);
-            let terminal_height = f.size().height;
-            let index_row_height = 1;
-            let height_to_remove = info_row_height 
-                                    + input_box_height 
-                                    + (border_width * 2)
-                                    + index_row_height;
-            let data_height = if terminal_height > height_to_remove {
-                terminal_height - height_to_remove
-            } else {
-                0
-            };
-
-            let rows = usize::from(data_height);
-            app.set_page_size_height(rows);
-
-            let max_widths : Vec<usize> = Vec::new();
-
-            max_widths.push(col_width);
-            for col in 1..cols {
-                max_widths.push(app.get_max_col_width(col-1));
-            } 
-
-            render_ui(app.get_data(), 
-                      app.get_data_width(),
+            let app_data = app.get_data();
+            render_ui(app_data, 
                       app.get_input(), 
                       app.get_input_mode(), 
-                      running_mode,
-                      app.get_filename(), 
-                      app.is_in_saved_state(),
-                      app.get_current_pos(),
+                      &running_mode,
+                      app_filename, 
+                      app_is_saved,
+                      app_pos,
                       app.get_current_page_pos(),
                       max_widths,
+                      page_width,
+                      page_height,
                       f)
             //render_ui(f, &running_mode)
         })?;
@@ -95,47 +102,36 @@ pub fn run<B: Backend>(
                 InputMode::Normal => match key.code {
                     KeyCode::Char('e') => {
                         app.set_input_node(InputMode::Editing);
-                        let data_row_pos = (self.page_size.height 
-                                            * self.page_pos.row) 
-                                            + self.pos.row;
-                        let data_col_pos = (self.page_size.width
-                                            * self.page_pos.col) 
-                                            + self.pos.col;
-                        match self.data.get(data_row_pos) {
-                            Some(row) => {
-                                match row.get(data_col_pos) {
-                                    Some(cell) => {
-                                        self.input.push_str(cell)
-                                    },
-                                    None => {}
-                                }
-                            },
-                            None => {} 
-                        }
+                        let data_row_pos = (page_height
+                                            * app.get_current_page_pos().row())
+                                            + app.get_current_pos().row();
+                        let data_col_pos = (page_width
+                                            * app.get_current_page_pos().col())
+                                            + app.get_current_pos().col();
+                        app.set_cell_value_current_input(data_row_pos, data_col_pos);
                     },
                     KeyCode::Char('q') => {
-                        self.input_mode = InputMode::Quiting;
+                        app.set_input_node(InputMode::Quiting);
                     },
                     KeyCode::Char('s') => {
-                        if self.saved == true {
-                            self.input_mode = InputMode::Saved;
+                        if app_is_saved {
+                            app.set_input_node(InputMode::Saved);
                         } else {
-                            match &self.filename {
+                            match app_filename {
                                 Some(_) => {
-                                    match self.save_data_to_file() {
+                                    match app.save_data_to_file() {
                                         Ok(_) => {
-                                            self.saved = true;
-                                            self.input_mode = 
-                                                InputMode::Saved;
+                                            app.set_saved(true); 
+                                            app.set_input_node(InputMode::Saved);
                                         },
                                         Err(_) => {
-                                            self.input_mode = 
-                                                InputMode::SavedFailed;
+                                            app.set_saved(false);
+                                            app.set_input_node(InputMode::SavedFailed);
                                         }
                                     }
                                 },
-                                None => { 
-                                    self.input_mode = InputMode::Saving;
+                                None => {
+                                    app.set_input_node(InputMode::Saving);
                                 }
                             }
                         }
@@ -143,103 +139,92 @@ pub fn run<B: Backend>(
                         // change to normal
                     },
                     KeyCode::Char('a') => {
-                        self.input_mode = InputMode::Saving;
+                        app.set_input_node(InputMode::Saving);
                     },
                     KeyCode::Left | KeyCode::Char('h') => {
-                        if self.pos.col > 0 {
-                            self.pos.col -= 1;
-                        }
+                        app.decrement_current_pos_col();
                     },
                     KeyCode::Right | KeyCode::Char('l') => {
-                        self.pos.col += 1;
+                        app.increment_current_pos_col();
                     },
                     KeyCode::Up | KeyCode::Char('k') => {
-                        if self.pos.row > 0 {
-                            self.pos.row -= 1;
-                        }
+                        app.decrement_current_pos_row();
                     },
                     KeyCode::Down | KeyCode::Char('j') => {
-                        self.pos.row += 1;
-                    },
-                    KeyCode::Char('L') => {
-                        self.page_pos.col += 1;
+                        app.increment_current_pos_row();
                     },
                     KeyCode::Char('H') => {
-                        if self.page_pos.col > 0 {
-                            self.page_pos.col -= 1;
-                        }
+                        app.decrement_current_page_pos_col();
                     },
-                    KeyCode::Char('J') => {
-                        self.page_pos.row += 1;
+                    KeyCode::Char('L') => {
+                        app.increment_current_page_pos_col();
                     },
                     KeyCode::Char('K') => {
-                        if self.page_pos.row > 0 {
-                            self.page_pos.row -= 1;
-                        }
+                        app.decrement_current_page_pos_row();
+                    },
+                    KeyCode::Char('J') => {
+                        app.increment_current_page_pos_row();
                     },
                     KeyCode::Char('r') => {
-                        self.input_mode = InputMode::SelectingRow;
+                        app.set_input_node(InputMode::SelectingRow);
                     },
                     KeyCode::Char('c') => {
-                        self.input_mode = InputMode::SelectingCol;
+                        app.set_input_node(InputMode::SelectingCol);
                     },
                     _ => {}
                 },
                 InputMode::Editing => match key.code {
                     KeyCode::Enter => {
-                        let current_input = self.input.drain(..).collect();
-                        self.add_value_to_cell(current_input);
-                        self.saved = false;
-                        self.input_mode = InputMode::Normal;
+                        app.set_input_to_current_pos();
+                        app.set_input_node(InputMode::Normal);
                     },
                     KeyCode::Char(char) => {
-                        self.input.push(char);
+                        app.append_char_current_input(char);
                     },
                     KeyCode::Backspace => {
-                        self.input.pop();
+                        app.pop_current_input();
                     },
                     KeyCode::Esc => {
-                        self.input_mode = InputMode::Normal;
+                        app.set_input_node(InputMode::Normal);
                     },
                     _ => {}
                 },
                 InputMode::Saving => match key.code {
                     KeyCode::Enter => {
-                        let current_input = self.input.drain(..).collect();
-                        self.filename = Some(current_input);
-                        match self.save_data_to_file() {
+                        app.set_filename_to_input();
+                        match app.save_data_to_file() {
                             Ok(_) => {
-                                self.saved = true;
-                                self.input_mode = InputMode::Saved;
+                                app.set_saved(true); 
+                                app.set_input_node(InputMode::Saved);
                             },
                             Err(_) => {
-                                self.saved = false; 
-                                self.input_mode = InputMode::SavedFailed;
+                                app.set_saved(false);
+                                app.set_input_node(InputMode::SavedFailed);
                             }
                         }
                     },
                     KeyCode::Char(char) => {
-                        self.input.push(char);
+                        app.append_char_current_input(char);
                     },
                     KeyCode::Backspace => {
-                        self.input.pop();
+                        app.pop_current_input();
                     },
                     KeyCode::Esc => {
-                        self.input.clear();
-                        self.input_mode = InputMode::Normal;
+                        app.clear_input();
+                        app.set_input_node(InputMode::Normal);
                     },
                     _ => {}
                 },
                 InputMode::Saved | InputMode::SavedFailed => {
-                    self.input_mode = InputMode::Normal;
+                    app.set_input_node(InputMode::Normal);
                 },
                 InputMode::Quiting => {
-                   if self.saved == true {
+                   if app_is_saved {
                        return Ok(());
                    } else {
                        match key.code {
                            KeyCode::Char('y') => {
-                               self.input_mode = InputMode::QuitSaving;
+                               app.set_input_node(InputMode::QuitSaving);
                            },
                            KeyCode::Char('n') => {
                                return Ok(());
@@ -249,49 +234,43 @@ pub fn run<B: Backend>(
                    } 
                 },
                 InputMode::QuitSaving => {
-                    match &self.filename {
+                    match app_filename {
                         Some(_) => {
-                            match self.save_data_to_file() {
+                            match app.save_data_to_file() {
                                 Ok(_) => {
-                                    self.saved = true;
-                                    self.input_mode = 
-                                        InputMode::Quiting;
+                                    app.set_saved(true);
+                                    app.set_input_node(InputMode::Quiting);
                                 },
                                 Err(_) => {
-                                    self.input_mode = 
-                                        InputMode::SavedFailed;
+                                    app.set_saved(false);
+                                    app.set_input_node(InputMode::SavedFailed);
                                 }
                             }
                         },
                         None => { 
                             match key.code {
                                 KeyCode::Enter => {
-                                    let current_input = self.input
-                                                        .drain(..)
-                                                        .collect();
-                                    self.filename = Some(current_input);
-                                    match self.save_data_to_file() {
+                                    app.set_filename_to_input();
+                                    match app.save_data_to_file() {
                                         Ok(_) => {
-                                            self.saved = true;
-                                            self.input_mode = 
-                                                InputMode::Quiting;
+                                            app.set_saved(true); 
+                                            app.set_input_node(InputMode::Quiting);
                                         },
                                         Err(_) => {
-                                            self.saved = false; 
-                                            self.input_mode = 
-                                                InputMode::SavedFailed;
+                                            app.set_saved(false);
+                                            app.set_input_node(InputMode::SavedFailed);
                                         }
                                     }
                                 },
                                 KeyCode::Char(char) => {
-                                    self.input.push(char);
+                                    app.append_char_current_input(char);
                                 },
                                 KeyCode::Backspace => {
-                                    self.input.pop();
+                                    app.pop_current_input();
                                 },
                                 KeyCode::Esc => {
-                                    self.input.clear();
-                                    self.input_mode = InputMode::Normal;
+                                    app.clear_input();
+                                    app.set_input_node(InputMode::Normal);
                                 },
                                 _ => {}
                             }
@@ -301,21 +280,21 @@ pub fn run<B: Backend>(
                 InputMode::SelectingRow | InputMode::SelectingCol => {
                     match key.code {
                         KeyCode::Char('i') => {
-                            self.insert_remove_row_col(
+                            app.insert_remove_row_col(
                                 InsertMode::Adding
                             );
-                            self.saved = false;
-                            self.input_mode = InputMode::Normal;
+                            app.set_saved(false);
+                            app.set_input_node(InputMode::Normal);
                         },
                         KeyCode::Char('r') => {
-                            self.insert_remove_row_col(
+                            app.insert_remove_row_col(
                                 InsertMode::Removing
                             );
-                            self.saved = false;
-                            self.input_mode = InputMode::Normal;
+                            app.set_saved(false);
+                            app.set_input_node(InputMode::Normal);
                         },
                         KeyCode::Esc => {
-                            self.input_mode = InputMode::Normal;
+                            app.set_input_node(InputMode::Normal);
                         },
                         _ => {} 
                     }

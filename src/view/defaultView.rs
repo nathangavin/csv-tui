@@ -28,16 +28,17 @@ use crate::{
     }, 
     model::defaultAppModel::Position};
 
-pub fn render_ui<B: Backend>(data: Vec<Vec<String>>,
-                            data_width: usize,
+pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
                             current_input: &str,
-                            input_mode: InputMode,
-                            running_mode: RunningMode,
-                            filename: Option<String>,
+                            input_mode: &InputMode,
+                            running_mode: &RunningMode,
+                            filename: &Option<String>,
                             is_saved: bool,
-                            current_pos: Position,
-                            current_page_pos: Position,
+                            current_pos: &Position,
+                            current_page_pos: &Position,
                             max_widths: Vec<usize>,
+                            page_width: usize,
+                            page_height: usize,
                             f: &mut Frame<B>) {
     // Set up top level page structure
     let info_row_height = 1;
@@ -231,8 +232,8 @@ pub fn render_ui<B: Backend>(data: Vec<Vec<String>>,
     let mut table_rows = Vec::new();
     let mut widths = Vec::new();
     widths.push(Constraint::Length(col_width as u16));
-    for width in max_widths {
-        widths.push(Constraint::Length(width as u16));
+    for width in max_widths.as_slice() {
+        widths.push(Constraint::Length(*width as u16));
     }
     /*
     for col in 1..=cols {
@@ -244,17 +245,18 @@ pub fn render_ui<B: Backend>(data: Vec<Vec<String>>,
     let mut first_row_vec = Vec::new();
     first_row_vec.push(Cell::from(""));
     for col in 0..cols {
-        let num = (current_page_pos.col * cols) + col;
+        let num = (current_page_pos.col() * cols) + col;
+        first_row_vec.push(Cell::from(num.to_string()))
     }
     table_rows.push(Row::new(first_row_vec));
 
     for row in 0..rows {
         let mut row_vec = Vec::new();
-        let row_num = (current_page_pos.row * rows) + row;
+        let row_num = (current_page_pos.row() * rows) + row;
         row_vec.push(Cell::from(row_num.to_string()));
         let default_cell_value = "_____";
         for col in 0..cols {
-            let col_num = (current_page_pos.col * cols) + col;
+            let col_num = (current_page_pos.col() * cols) + col;
             let mut cell_has_value = false;
             let mut cell_value = String::from(match data.get(row_num) {
                 Some(data_row) => {
@@ -283,7 +285,7 @@ pub fn render_ui<B: Backend>(data: Vec<Vec<String>>,
 
             match input_mode {
                 InputMode::Normal => {
-                    if current_pos.row == row && current_pos.col == col {
+                    if current_pos.row() == row && current_pos.col() == col {
                         let style = Style::default()
                             .add_modifier(Modifier::RAPID_BLINK)
                             .fg(Color::Yellow);
@@ -304,7 +306,7 @@ pub fn render_ui<B: Backend>(data: Vec<Vec<String>>,
                     }
                 }
                 InputMode::Editing => {
-                    if current_pos.row == row && current_pos.col == col {
+                    if current_pos.row() == row && current_pos.col() == col {
                         let style = Style::default().fg(Color::Yellow);
                         let cell = Cell::from(
                             Span::styled(cell_value, style)
@@ -331,7 +333,7 @@ pub fn render_ui<B: Backend>(data: Vec<Vec<String>>,
                         row_vec.push(cell);
                 },
                 InputMode::SelectingCol => {
-                    if current_pos.col == col {
+                    if current_pos.col() == col {
                         let style = Style::default().fg(Color::Yellow);
                         let cell = Cell::from(
                             Span::styled(cell_value, style)
@@ -350,7 +352,7 @@ pub fn render_ui<B: Backend>(data: Vec<Vec<String>>,
                     }
                 },
                 InputMode::SelectingRow => {
-                    if current_pos.row == row {
+                    if current_pos.row() == row {
                         let style = Style::default().fg(Color::Yellow);
                         let cell = Cell::from(
                             Span::styled(cell_value, style)

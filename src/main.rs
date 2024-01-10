@@ -14,16 +14,17 @@ use crossterm::{
         EnableMouseCapture, 
         DisableMouseCapture}};
 
+use model::defaultAppModel::DefaultAppModel;
+use controller::defaultController::RunningMode;
+use controller::defaultController::run as run;
+
 mod view;
 mod model;
 mod controller;
-mod app;
-use app::RunningMode;
-use app::App;
 
 fn main() -> Result<(), io::Error>{
     let args: Vec<String> = env::args().collect();
-    let app: App;
+    let mut app: DefaultAppModel;
     if args.len() > 1 {
         let filename = match args.get(1) {
             Some(name) => name,
@@ -32,7 +33,7 @@ fn main() -> Result<(), io::Error>{
                 return Ok(());
             }
         };
-        app = match App::load_file_into_app(String::from(filename)) {
+        app = match DefaultAppModel::load_file_into_app(String::from(filename)) {
             Ok(app) => app,
             Err(_) => {
                 disable_raw_mode()?;
@@ -41,7 +42,7 @@ fn main() -> Result<(), io::Error>{
             }
         };
     } else {
-        app = App::default();
+        app = DefaultAppModel::default();
     }
     let running_mode = match args.get(2) {
         Some(flag) => {
@@ -59,7 +60,7 @@ fn main() -> Result<(), io::Error>{
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend  = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    let res = app.run(&mut terminal, running_mode);
+    let res = run(&mut app, &mut terminal, running_mode);
 
     disable_raw_mode()?;
     execute!(
@@ -76,4 +77,3 @@ fn main() -> Result<(), io::Error>{
 
 // TODO
 // add button for showing commands
-// split app model code and app view code, in order to add debugging viewmode
