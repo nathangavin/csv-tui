@@ -243,7 +243,11 @@ pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
     let mut first_row_vec = Vec::new();
     first_row_vec.push(Cell::from(""));
     for col in 0..cols {
-        let num = (current_page_pos.col() * cols) + col;
+        let num = if current_page_pos.col() > 0 {
+            (current_page_pos.col() * (cols - 1)) + col
+        } else {
+            col
+        };
         first_row_vec.push(Cell::from(num.to_string()))
     }
     table_rows.push(Row::new(first_row_vec));
@@ -254,7 +258,11 @@ pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
         row_vec.push(Cell::from(row_num.to_string()));
         let default_cell_value = "_____";
         for col in 0..cols {
-            let col_num = (current_page_pos.col() * cols) + col;
+            let col_num = if current_page_pos.col() > 0 {
+                (current_page_pos.col() * (cols - 1)) + col
+            } else {
+                col
+            };
             let mut cell_has_value = false;
             let mut cell_value = String::from(match data.get(row_num) {
                 Some(data_row) => {
