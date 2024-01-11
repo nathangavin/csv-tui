@@ -37,8 +37,6 @@ pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
                             current_pos: &Position,
                             current_page_pos: &Position,
                             max_widths: Vec<usize>,
-                            page_width: usize,
-                            page_height: usize,
                             f: &mut Frame<B>) {
     // Set up top level page structure
     let info_row_height = 1;
@@ -275,8 +273,11 @@ pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
                 None => default_cell_value
             });
             
-            let max_col_width = max_widths.get(col).unwrap();
-            if  cell_value.len() < *max_col_width {
+            let max_col_width : usize = match max_widths.get(col) {
+                Some(length) => *length,
+                None => default_cell_value.len()
+            };
+            if  cell_value.len() < max_col_width {
                 let diff = max_col_width - cell_value.len();
                 for _ in 0..diff {
                     cell_value.push('_');

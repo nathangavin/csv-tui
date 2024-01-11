@@ -75,7 +75,7 @@ pub fn run<B: Backend>(
 
         let mut max_widths : Vec<usize> = Vec::new();
 
-        max_widths.push(col_width);
+        //max_widths.push(col_width);
         for col in 1..cols {
             max_widths.push(app.get_max_col_width(col-1));
         } 
@@ -92,8 +92,6 @@ pub fn run<B: Backend>(
                       app_pos,
                       app.get_current_page_pos(),
                       max_widths,
-                      page_width,
-                      page_height,
                       f)
             //render_ui(f, &running_mode)
         })?;
@@ -223,10 +221,10 @@ pub fn run<B: Backend>(
                        return Ok(());
                    } else {
                        match key.code {
-                           KeyCode::Char('y') => {
+                           KeyCode::Char('y') | KeyCode::Char('Y') => {
                                app.set_input_node(InputMode::QuitSaving);
                            },
-                           KeyCode::Char('n') => {
+                           KeyCode::Char('n') | KeyCode::Char('N') => {
                                return Ok(());
                            },
                            _ => {}
