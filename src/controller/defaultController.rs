@@ -9,6 +9,7 @@ use crossterm::event::{
 
 use crate::model::defaultAppModel::DefaultAppModel;
 
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum InputMode {
     Normal,
     Editing,
@@ -20,6 +21,8 @@ pub enum InputMode {
     Saved,
     SavedFailed
 }
+
+
 pub enum InsertMode {
     Adding,
     Removing
@@ -79,6 +82,7 @@ pub fn run<B: Backend>(
         for col in 1..cols {
             max_widths.push(app.get_max_col_width(col-1));
         } 
+
 
         terminal.draw(|f| {
 

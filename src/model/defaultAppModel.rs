@@ -28,14 +28,15 @@ pub struct Size {
     width: usize,
     height: usize
 }
-/*
-impl Copy for Size {}
-impl Clone for Size {
-    fn clone(&self) -> Self {
-        *self
+
+impl Size {
+    pub fn width(&self) -> usize {
+        self.width
+    }
+    pub fn height(&self) -> usize {
+        self.height
     }
 }
-*/
 
 pub struct DefaultAppModel {
     /// Current value of the input box
