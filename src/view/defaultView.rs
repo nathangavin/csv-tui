@@ -21,24 +21,58 @@ use tui::{
         Modifier, 
         Color}};
 
-use crate::{
-    controller::defaultController::{
-        InputMode, 
-        RunningMode
-    }, 
-    model::defaultAppModel::{Position, Size}};
+use crate::model::UtilsModel::{
+    Position,
+    Size,
+    InputMode,
+    RunningMode
+};
 
-
-pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
-                            current_input: &str,
+/// function renders the UI into the terminal frame provided. 
+///
+/// # Arguments
+///
+/// * `data_slice` - a 2D Vec of Strings which represent the slice of the CSV data that
+/// fits on the page.
+///
+/// * `grid_size` - a Size struct which is the size of the data Vec.
+///
+/// * `data_size` - a Size struct which is the saize of the entire CSV data.
+///
+/// * `column_widths` - a Vec of usize which describes how wide each column should
+/// be in order to fit the data. length should match the width defined in grid_size and 
+/// data.
+///
+/// * `corner_pos` - a Position struct which states where the top left corner of the 
+/// current data slice appears in the overall csv data. Used to generate row and col 
+/// numbers.
+///
+/// * `relative_pos` - a Position struct which states the position of the currently 
+/// selected cell. The position is relative to the current frame, not the overall position
+/// in the csv data.
+///
+/// * `input_mode` - an InputMode enum which states the current input mode that the application is
+/// in.
+///
+/// * `running_mode` - a RunningMode enum which states the current input mode that the application
+/// is in.
+///
+/// * `current_input` - a str which is the current value of the input field.
+///
+/// * `filename` - the name of the file being edited.
+///
+/// * `is_saved` - a boolean desribing if the current state of the file is saved to disk or not.
+pub fn render_ui<B: Backend>(data_slice: Vec<Vec<String>>,
+                            grid_size: &Size,
+                            data_size: Size,
+                            column_widths: Vec<usize>,
+                            corner_pos: &Position,
+                            relative_pos: &Position,
                             input_mode: &InputMode,
                             running_mode: &RunningMode,
+                            current_input: &str,
                             filename: &Option<String>,
                             is_saved: bool,
-                            corner_pos: Position,
-                            current_pos: Position,
-                            grid_size: Size,
-                            column_widths: Vec<usize>,
                             f: &mut Frame<B>) {
     /*
      * configure chunk structure, defining top level as info box, second
@@ -74,10 +108,10 @@ pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
      */
 
     let col_width: usize = 5;
-    let widths = Vec::new();
+    let mut widths = Vec::new();
     widths.push(Constraint::Length(col_width as u16));
-    for col in 0..grid_size.width() {
-        let width = match column_widths.get(0) {
+    for col in 0..grid_size.width {
+        let width = match column_widths.get(col) {
             Some(w) => w,
             None => &col_width
         };
@@ -87,20 +121,20 @@ pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
 
     let mut first_row_vec = Vec::new();
     first_row_vec.push(Cell::from(""));
-    for col in 0..grid_size.width() {
-        let num = corner_pos.col() + col;
+    for col in 0..grid_size.width {
+        let num = corner_pos.col + col;
         first_row_vec.push(Cell::from(num.to_string()));
     }
     table_rows.push(Row::new(first_row_vec));
 
-    for row in 0..grid_size.height() {
+    let default_cell_value = "_____";
+    for row in 0..grid_size.height {
         let mut row_vec = Vec::new();
-        let row_num = corner_pos.row() + row;
+        let row_num = corner_pos.row + row;
         row_vec.push(Cell::from(row_num.to_string()));
-        let default_cell_value = "_____";
-        for col in 0..grid_size.width() {
+        for col in 0..grid_size.width {
             let mut cell_has_value = false;
-            let mut cell_value = String::from(match data.get(row) {
+            let mut cell_value = String::from(match data_slice.get(row) {
                 Some(data_row) => {
                     match data_row.get(col) {
                         Some(data_cell) => {
@@ -130,7 +164,7 @@ pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
 
             match input_mode {
                 InputMode::Normal => {
-                    if current_pos.row() == row && current_pos.col() == col {
+                    if relative_pos.row == row && relative_pos.col == col {
                         let style = Style::default()
                             .add_modifier(Modifier::RAPID_BLINK)
                             .fg(Color::Yellow);
@@ -151,7 +185,7 @@ pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
                     }
                 }
                 InputMode::Editing => {
-                    if current_pos.row() == row && current_pos.col() == col {
+                    if relative_pos.row == row && relative_pos.col == col {
                         let style = Style::default().fg(Color::Yellow);
                         let cell = Cell::from(
                             Span::styled(cell_value, style)
@@ -178,7 +212,7 @@ pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
                         row_vec.push(cell);
                 },
                 InputMode::SelectingCol => {
-                    if current_pos.col() == col {
+                    if relative_pos.col == col {
                         let style = Style::default().fg(Color::Yellow);
                         let cell = Cell::from(
                             Span::styled(cell_value, style)
@@ -197,7 +231,7 @@ pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
                     }
                 },
                 InputMode::SelectingRow => {
-                    if current_pos.row() == row {
+                    if relative_pos.row == row {
                         let style = Style::default().fg(Color::Yellow);
                         let cell = Cell::from(
                             Span::styled(cell_value, style)
@@ -219,13 +253,9 @@ pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
         }
         table_rows.push(Row::new(row_vec));
     }
-    let data_width = match data.get(0) {
-        Some(row) => row.len(),
-        None => 0
-    };
     let current_size_string = format!("Rows - {}, Cols - {}", 
-                                        data.len(),
-                                        data_width);
+                                        data_size.height,
+                                        data_size.width);
     let table_name = match filename {
         Some(name) => String::from(name),
         None => String::from("Table"),
@@ -236,7 +266,7 @@ pub fn render_ui<B: Backend>(data: &Vec<Vec<String>>,
         .widths(&widths)
         .column_spacing(1)
         .highlight_style(Style::default().add_modifier(Modifier::BOLD));
-    let debug_str = format!("{:?}", data);
+    let debug_str = format!("{:?}", data_slice);
     let debug_display = Paragraph::new(debug_str);
     match running_mode {
         RunningMode::Normal => {

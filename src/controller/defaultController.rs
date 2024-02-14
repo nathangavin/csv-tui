@@ -7,44 +7,26 @@ use crossterm::event::{
         KeyCode, 
         Event};
 
-use crate::model::defaultAppModel::DefaultAppModel;
-
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub enum InputMode {
-    Normal,
-    Editing,
-    SelectingRow,
-    SelectingCol,
-    Saving,
-    Quiting,
-    QuitSaving,
-    Saved,
-    SavedFailed
-}
-
-
-pub enum InsertMode {
-    Adding,
-    Removing
-}
-pub enum RunningMode {
-    Normal,
-    Debug
-}
-
+use crate::model::{
+    AppStateModel::AppStateModel,
+    CsvModel::CsvModel,
+    UtilsModel::{
+        RunningMode,
+        InputMode,
+        Size
+    },
+};
 use crate::view::defaultView::render_ui;
 
 pub fn run<B: Backend>(
-            app: &mut DefaultAppModel,
+            app_data: &mut CsvModel,
+            app_state: &mut AppStateModel,
             terminal: &mut Terminal<B>,
-            running_mode: RunningMode
+            _running_mode: RunningMode
             ) -> io::Result<()> {
-
+    
     loop {
         
-        let app_is_saved = app.is_in_saved_state();
-        let app_filename = app.get_filename();
-        let app_pos = app.get_current_pos();
 
         let info_row_height = 1;
         let input_box_height = 3;
@@ -59,8 +41,7 @@ pub fn run<B: Backend>(
         } else { 
             0
         };
-        let cols = usize::from(data_width / 6);
-        let page_width = cols;
+       
         let terminal_height = terminal.size()?.height;
         let index_row_height = 1;
         let height_to_remove = info_row_height 
@@ -73,67 +54,75 @@ pub fn run<B: Backend>(
             0
         };
 
-        let rows = usize::from(data_height);
-        let page_height = rows;
+        let grid_size = Size { 
+            width: calculate_current_grid_columns(app_state, 
+                                                  app_data, 
+                                                  data_width as usize), 
+            height: data_height as usize 
+        };
 
-        let mut max_widths : Vec<usize> = Vec::new();
 
-        //max_widths.push(col_width);
-        for col in 1..cols {
-            max_widths.push(app.get_max_col_width(col-1));
+        let input_mode = app_state.get_input_mode();
+        let corner_pos = app_state.get_corner_pos();
+
+        let mut column_widths : Vec<usize> = Vec::new();
+        for col in (corner_pos.col)..(corner_pos.col + grid_size.width) {
+            column_widths.push(app_data.get_col_max_width(col));
         } 
 
+        let relative_pos = app_state.get_relative_pos();
+        let app_is_saved = app_data.is_in_saved_state();
+        let app_filename = app_data.get_filename();
+
+        let data_slice = app_data.get_data_segment(&corner_pos, &grid_size);
 
         terminal.draw(|f| {
-
-            let app_data = app.get_data();
-            render_ui(app_data, 
-                      app.get_input(), 
-                      app.get_input_mode(), 
-                      &running_mode,
-                      app_filename, 
+            render_ui(data_slice, 
+                      &grid_size,
+                      app_data.get_data_size(),
+                      column_widths,
+                      &corner_pos,
+                      &relative_pos,
+                      input_mode,
+                      app_state.get_running_mode(),
+                      app_state.get_input(),
+                      app_filename,
                       app_is_saved,
-                      app_pos,
-                      app.get_current_page_pos(),
-                      max_widths,
                       f)
-            //render_ui(f, &running_mode)
         })?;
         if let Event::Key(key) = event::read()? {
-            match app.get_input_mode() {
+            match input_mode {
                 InputMode::Normal => match key.code {
                     KeyCode::Char('e') => {
-                        app.set_input_node(InputMode::Editing);
-                        let data_row_pos = (page_height
-                                            * app.get_current_page_pos().row())
-                                            + app.get_current_pos().row();
-                        let data_col_pos = (page_width
-                                            * app.get_current_page_pos().col())
-                                            + app.get_current_pos().col();
-                        app.set_cell_value_current_input(data_row_pos, data_col_pos);
+                        app_state.set_input_mode(InputMode::Editing);
+                        let data_row_pos = corner_pos.row + relative_pos.row;
+                        let data_col_pos = corner_pos.col + relative_pos.col;
+                        
+                        app_state.append_str_current_input(
+                            app_data.get_cell_value(data_row_pos, data_col_pos));
                     },
                     KeyCode::Char('q') => {
-                        app.set_input_node(InputMode::Quiting);
+                        app_state.set_input_mode(InputMode::Quiting);
                     },
                     KeyCode::Char('s') => {
                         if app_is_saved {
-                            app.set_input_node(InputMode::Saved);
+                            app_state.set_input_mode(InputMode::Saved);
                         } else {
                             match app_filename {
                                 Some(_) => {
-                                    match app.save_data_to_file() {
+                                    match app_data.save_data_to_file() {
                                         Ok(_) => {
-                                            app.set_saved(true); 
-                                            app.set_input_node(InputMode::Saved);
+                                            app_data.set_saved(true); 
+                                            app_state.set_input_mode(InputMode::Saved);
                                         },
                                         Err(_) => {
-                                            app.set_saved(false);
-                                            app.set_input_node(InputMode::SavedFailed);
+                                            app_data.set_saved(false);
+                                            app_state.set_input_mode(InputMode::SavedFailed);
                                         }
                                     }
                                 },
                                 None => {
-                                    app.set_input_node(InputMode::Saving);
+                                    app_state.set_input_mode(InputMode::Saving);
                                 }
                             }
                         }
@@ -141,84 +130,109 @@ pub fn run<B: Backend>(
                         // change to normal
                     },
                     KeyCode::Char('a') => {
-                        app.set_input_node(InputMode::Saving);
+                        app_state.set_input_mode(InputMode::Saving);
                     },
                     KeyCode::Left | KeyCode::Char('h') => {
-                        app.decrement_current_pos_col();
+                        app_state.decrement_relative_pos_col();
                     },
                     KeyCode::Right | KeyCode::Char('l') => {
-                        app.increment_current_pos_col();
+                        app_state.increment_relative_pos_col();
                     },
                     KeyCode::Up | KeyCode::Char('k') => {
-                        app.decrement_current_pos_row();
+                        app_state.decrement_relative_pos_row();
                     },
                     KeyCode::Down | KeyCode::Char('j') => {
-                        app.increment_current_pos_row();
+                        app_state.increment_relative_pos_row();
                     },
                     KeyCode::Char('H') => {
-                        app.decrement_current_page_pos_col();
+                        if corner_pos.col > 0 {
+                            let prev_grid_size = Size {
+                                width: calculate_prev_grid_columns(app_state, 
+                                                                   app_data, 
+                                                                   data_width as usize),
+                                height: data_height as usize
+                            };
+                            app_state.remove_from_corner_pos_col(prev_grid_size.width);
+                        }
                     },
                     KeyCode::Char('L') => {
-                        app.increment_current_page_pos_col();
+                        app_state.add_to_corner_pos_col(grid_size.width);
                     },
                     KeyCode::Char('K') => {
-                        app.decrement_current_page_pos_row();
+                        if corner_pos.row > 0 {
+                            let prev_grid_size = Size {
+                                width: calculate_prev_grid_columns(app_state, 
+                                                                   app_data, 
+                                                                   data_width as usize),
+                                height: data_height as usize
+                            };
+                            app_state.remove_from_corner_pos_row(prev_grid_size.height);
+                        }
                     },
                     KeyCode::Char('J') => {
-                        app.increment_current_page_pos_row();
+                        app_state.add_to_corner_pos_row(grid_size.height);
                     },
                     KeyCode::Char('r') => {
-                        app.set_input_node(InputMode::SelectingRow);
+                        app_state.set_input_mode(InputMode::SelectingRow);
                     },
                     KeyCode::Char('c') => {
-                        app.set_input_node(InputMode::SelectingCol);
+                        app_state.set_input_mode(InputMode::SelectingCol);
                     },
                     _ => {}
                 },
                 InputMode::Editing => match key.code {
                     KeyCode::Enter => {
-                        app.set_input_to_current_pos();
-                        app.set_input_node(InputMode::Normal);
+                        /*
+                         * draing the current input value from the app state, 
+                         * then set the value of the current cell to the value
+                         * of the input.
+                         */
+                        let row = app_state.get_corner_pos().row 
+                            + app_state.get_relative_pos().row;
+                        let col = app_state.get_corner_pos().col
+                            + app_state.get_relative_pos().col;
+                        app_data.set_cell_value(row, col, app_state.drain_input());
+                        app_state.set_input_mode(InputMode::Normal);
                     },
                     KeyCode::Char(char) => {
-                        app.append_char_current_input(char);
+                        app_state.append_char_current_input(char);
                     },
                     KeyCode::Backspace => {
-                        app.pop_current_input();
+                        app_state.pop_current_input();
                     },
                     KeyCode::Esc => {
-                        app.set_input_node(InputMode::Normal);
+                        app_state.set_input_mode(InputMode::Normal);
                     },
                     _ => {}
                 },
                 InputMode::Saving => match key.code {
                     KeyCode::Enter => {
-                        app.set_filename_to_input();
-                        match app.save_data_to_file() {
+                        app_data.set_filename(app_state.drain_input());
+                        match app_data.save_data_to_file() {
                             Ok(_) => {
-                                app.set_saved(true); 
-                                app.set_input_node(InputMode::Saved);
+                                app_data.set_saved(true);
+                                app_state.set_input_mode(InputMode::Saved);
                             },
                             Err(_) => {
-                                app.set_saved(false);
-                                app.set_input_node(InputMode::SavedFailed);
+                                app_data.set_saved(false);
+                                app_state.set_input_mode(InputMode::SavedFailed);
                             }
                         }
                     },
                     KeyCode::Char(char) => {
-                        app.append_char_current_input(char);
+                        app_state.append_char_current_input(char);
                     },
                     KeyCode::Backspace => {
-                        app.pop_current_input();
+                        app_state.pop_current_input();
                     },
                     KeyCode::Esc => {
-                        app.clear_input();
-                        app.set_input_node(InputMode::Normal);
+                        app_state.clear_input();
+                        app_state.set_input_mode(InputMode::Normal);
                     },
                     _ => {}
                 },
                 InputMode::Saved | InputMode::SavedFailed => {
-                    app.set_input_node(InputMode::Normal);
+                    app_state.set_input_mode(InputMode::Normal);
                 },
                 InputMode::Quiting => {
                    if app_is_saved {
@@ -226,7 +240,7 @@ pub fn run<B: Backend>(
                    } else {
                        match key.code {
                            KeyCode::Char('y') | KeyCode::Char('Y') => {
-                               app.set_input_node(InputMode::QuitSaving);
+                               app_state.set_input_mode(InputMode::QuitSaving);
                            },
                            KeyCode::Char('n') | KeyCode::Char('N') => {
                                return Ok(());
@@ -238,70 +252,129 @@ pub fn run<B: Backend>(
                 InputMode::QuitSaving => {
                     match app_filename {
                         Some(_) => {
-                            match app.save_data_to_file() {
+                            match app_data.save_data_to_file() {
                                 Ok(_) => {
-                                    app.set_saved(true);
-                                    app.set_input_node(InputMode::Quiting);
+                                    app_data.set_saved(true);
+                                    app_state.set_input_mode(InputMode::Quiting);
                                 },
                                 Err(_) => {
-                                    app.set_saved(false);
-                                    app.set_input_node(InputMode::SavedFailed);
+                                    app_data.set_saved(false);
+                                    app_state.set_input_mode(InputMode::SavedFailed);
                                 }
                             }
                         },
                         None => { 
                             match key.code {
                                 KeyCode::Enter => {
-                                    app.set_filename_to_input();
-                                    match app.save_data_to_file() {
+                                    app_data.set_filename(app_state.drain_input());
+                                    match app_data.save_data_to_file() {
                                         Ok(_) => {
-                                            app.set_saved(true); 
-                                            app.set_input_node(InputMode::Quiting);
+                                            app_data.set_saved(true);
+                                            app_state.set_input_mode(InputMode::Quiting);
                                         },
                                         Err(_) => {
-                                            app.set_saved(false);
-                                            app.set_input_node(InputMode::SavedFailed);
+                                            app_data.set_saved(false);
+                                            app_state.set_input_mode(InputMode::SavedFailed);
                                         }
                                     }
                                 },
                                 KeyCode::Char(char) => {
-                                    app.append_char_current_input(char);
+                                    app_state.append_char_current_input(char);
                                 },
                                 KeyCode::Backspace => {
-                                    app.pop_current_input();
+                                    app_state.pop_current_input();
                                 },
                                 KeyCode::Esc => {
-                                    app.clear_input();
-                                    app.set_input_node(InputMode::Normal);
+                                    app_state.clear_input();
+                                    app_state.set_input_mode(InputMode::Normal);
                                 },
                                 _ => {}
                             }
                         }
                     }
                 },
-                InputMode::SelectingRow | InputMode::SelectingCol => {
+                InputMode::SelectingRow => {
+                    let row = app_state.get_corner_pos().row
+                        + app_state.get_relative_pos().row;
                     match key.code {
                         KeyCode::Char('i') => {
-                            app.insert_remove_row_col(
-                                InsertMode::Adding
-                            );
-                            app.set_saved(false);
-                            app.set_input_node(InputMode::Normal);
+                            app_data.insert_row(row);
+                            app_data.set_saved(false);
+                            app_state.set_input_mode(InputMode::Normal);
                         },
                         KeyCode::Char('r') => {
-                            app.insert_remove_row_col(
-                                InsertMode::Removing
-                            );
-                            app.set_saved(false);
-                            app.set_input_node(InputMode::Normal);
+                            app_data.remove_row(row);
+                            app_data.set_saved(false);
+                            app_state.set_input_mode(InputMode::Normal);
                         },
                         KeyCode::Esc => {
-                            app.set_input_node(InputMode::Normal);
+                            app_state.set_input_mode(InputMode::Normal);
+                        },
+                        _ => {}
+                    }
+                },
+                InputMode::SelectingCol => {
+                    let col = app_state.get_corner_pos().col
+                        + app_state.get_relative_pos().col;
+                    match key.code {
+                        KeyCode::Char('i') => {
+                            app_data.insert_col(col);
+                            app_data.set_saved(false);
+                            app_state.set_input_mode(InputMode::Normal);
+                        },
+                        KeyCode::Char('r') => {
+                            app_data.remove_col(col);
+                            app_data.set_saved(false);
+                            app_state.set_input_mode(InputMode::Normal);
+                        },
+                        KeyCode::Esc => {
+                            app_state.set_input_mode(InputMode::Normal);
                         },
                         _ => {} 
                     }
                 },
             }
         }
+    }
+
+    fn calculate_current_grid_columns(app_state: &AppStateModel,
+                                      app_data: &CsvModel,
+                                      area_width: usize) -> usize {
+
+        let mut num_cols = 0;
+        let mut total_widths = 0;
+        let mut current_col = app_state.get_corner_pos().col;
+
+        loop {
+            total_widths += app_data.get_col_max_width(current_col) + 1;
+            if total_widths < area_width {
+                num_cols += 1;
+                current_col += 1;
+            } else {
+                break;
+            }
+        }
+
+        return num_cols;
+    }
+
+    fn calculate_prev_grid_columns(app_state: &AppStateModel, 
+                                        app_data: &CsvModel, 
+                                        area_width: usize) -> usize {
+        let mut num_cols = 0;
+        let mut total_widths = 0;
+        let mut current_col = app_state.get_corner_pos().col;
+
+        loop {
+            total_widths += app_data.get_col_max_width(current_col) + 1;
+            if total_widths < area_width && current_col > 0 {
+                num_cols += 1;
+                current_col -= 1;
+            } else {
+                break;
+            }
+        }
+
+        return num_cols;
     }
 }

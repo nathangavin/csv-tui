@@ -14,8 +14,7 @@ use crossterm::{
         EnableMouseCapture, 
         DisableMouseCapture}};
 
-use model::defaultAppModel::DefaultAppModel;
-use controller::defaultController::RunningMode;
+use model::{CsvModel::CsvModel, AppStateModel::AppStateModel, UtilsModel::RunningMode};
 use controller::defaultController::run as run;
 
 mod view;
@@ -24,7 +23,7 @@ mod controller;
 
 fn main() -> Result<(), io::Error>{
     let args: Vec<String> = env::args().collect();
-    let mut app: DefaultAppModel;
+    let mut app_data: CsvModel;
     if args.len() > 1 {
         let filename = match args.get(1) {
             Some(name) => name,
@@ -33,7 +32,7 @@ fn main() -> Result<(), io::Error>{
                 return Ok(());
             }
         };
-        app = match DefaultAppModel::load_file_into_app(String::from(filename)) {
+        app_data = match CsvModel::load_file(String::from(filename)) {
             Ok(app) => app,
             Err(_) => {
                 disable_raw_mode()?;
@@ -42,7 +41,7 @@ fn main() -> Result<(), io::Error>{
             }
         };
     } else {
-        app = DefaultAppModel::default();
+        app_data = CsvModel::default();
     }
     let running_mode = match args.get(2) {
         Some(flag) => {
@@ -55,12 +54,14 @@ fn main() -> Result<(), io::Error>{
             RunningMode::Normal
         }
     };
+    let mut app_state: AppStateModel;
+    app_state = AppStateModel::from_running_mode(&running_mode);
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend  = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    let res = run(&mut app, &mut terminal, running_mode);
+    let res = run(&mut app_data, &mut app_state, &mut terminal, running_mode);
 
     disable_raw_mode()?;
     execute!(
