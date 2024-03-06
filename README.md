@@ -7,6 +7,9 @@ Written in Rust.
 
 ## How to install & run
 
+- download the latest release version based on your operating system
+    - note: windows version is currently bugged, refer to issues for more details
+- run executable from terminal
 
 ## Current TODO List
 
