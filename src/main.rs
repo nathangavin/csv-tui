@@ -1,4 +1,4 @@
-use std::{io, env};
+use std::{io, env, hash::Hash};
 use tui::{
     Terminal,
     backend::CrosstermBackend
@@ -14,7 +14,12 @@ use crossterm::{
         EnableMouseCapture, 
         DisableMouseCapture}};
 
-use model::{CsvModel::CsvModel, AppStateModel::AppStateModel, UtilsModel::RunningMode};
+use model::{
+    CsvModel::{
+        CsvModel, 
+        CsvDelimiter},
+    AppStateModel::AppStateModel, 
+    UtilsModel::RunningMode};
 use controller::defaultController::run as run;
 
 mod view;
@@ -78,3 +83,49 @@ fn main() -> Result<(), io::Error>{
 
 // TODO
 // add button for showing commands
+
+fn handle_input_args(mut args: Vec<String>) {
+    /*
+     * number of args equals different scenarios
+     * -f or --filename filename
+     * default is comma separated
+     * -c or --comma
+     * -t or --tab
+     * -sc or --semicolon
+     * -s or --space
+     * -d or --debug
+     */
+
+    /*
+     * ignore every argument except the above
+     */
+    
+    let num_args = args.len();
+
+    if num_args == 0 {
+        // default start, no file opening.
+        let delimiter = CsvDelimiter::Comma;
+    }
+
+    if num_args > 4 {
+        args.truncate(4);
+    }
+
+    for (index,arg) in args.iter().enumerate() {
+        match arg.as_str() {
+            "-f"|"--filename" => {
+                 
+
+            },
+            "-c"|"--comma" => {},
+            "-t"|"--tab" => {},
+            "-sc"|"--semicolon" => {},
+            "-s"|"--space" => {},
+            "-d"|"--debug" => {},
+            _ => {}
+        }
+    } 
+
+
+
+}

@@ -5,6 +5,13 @@ use super::UtilsModel::{
     Position
 };
 
+pub enum CsvDelimiter {
+    Comma,
+    Tab,
+    Semicolon,
+    Space
+}
+
 pub struct CsvModel {
     data: Vec<Vec<String>>,
     saved: bool,
