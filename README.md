@@ -14,6 +14,5 @@ Written in Rust. (By the way, that bird is a Tūī, a songbird native to my home
 ## Current TODO List
 
 - add separate page for tool functions/commands
-- split app.rs into model view controller logic
-    - add debugview
+- add debugview
     
