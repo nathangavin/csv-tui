@@ -3,7 +3,7 @@
 
 
 This a lightweight tool using a Terminal User Interface (TUI), which allows opening, viewing, editing and saving of standard CSV files. 
-Written in Rust.
+Written in Rust. (By the way, that bird is a Tūī, a songbird native to my home country, New Zealand)
 
 ## How to install & run
 
