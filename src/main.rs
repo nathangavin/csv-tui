@@ -1,4 +1,4 @@
-use std::{io, env, hash::Hash};
+use std::{collections::HashMap, env, hash::Hash, io};
 use tui::{
     Terminal,
     backend::CrosstermBackend
@@ -84,7 +84,7 @@ fn main() -> Result<(), io::Error>{
 // TODO
 // add button for showing commands
 
-fn handle_input_args(mut args: Vec<String>) {
+fn handle_input_args(mut args: Vec<String>) -> Result<(), &'static str> {
     /*
      * number of args equals different scenarios
      * -f or --filename filename
@@ -101,31 +101,61 @@ fn handle_input_args(mut args: Vec<String>) {
      */
     
     let num_args = args.len();
+    let mut app_data: CsvModel;
+    let mut delimiter: CsvDelimiter;
 
     if num_args == 0 {
         // default start, no file opening.
-        let delimiter = CsvDelimiter::Comma;
+        delimiter = CsvDelimiter::Comma;
     }
 
     if num_args > 4 {
         args.truncate(4);
     }
 
+    let delimiter_set = false;
+
+    let delimiters = HashMap::from([
+        ("-c", CsvDelimiter::Comma),
+        ("-t", CsvDelimiter::Tab),
+        ("-sc", CsvDelimiter::Semicolon),
+        ("-s", CsvDelimiter::Space)
+    ]);
+
     for (index,arg) in args.iter().enumerate() {
         match arg.as_str() {
             "-f"|"--filename" => {
-                 
-
+                match args.get(index + 1) {
+                    Some(filename) => {
+                        match CsvModel::load_file(String::from(filename)) {
+                            Ok(app) => {
+                                app_data = app;
+                            },
+                            Err(_) => {
+                                return Err("Error - Unable to load csv");
+                            }
+                        };
+                    },
+                    None => {
+                        return Err("Error - missing filename");
+                    }
+                }
             },
-            "-c"|"--comma" => {},
-            "-t"|"--tab" => {},
+            "-c"|"--comma" => {
+                /*
+                    use the defined map above to combine all the below options into one 
+                    branch. work out how to convert double dash params to single dash, or 
+                    otherwise handle issue.
+                 */
+            },
+            "-t"|"--tab" => {
+            },
             "-sc"|"--semicolon" => {},
             "-s"|"--space" => {},
             "-d"|"--debug" => {},
             _ => {}
-        }
+        };
     } 
 
-
-
+    Ok(())
 }
