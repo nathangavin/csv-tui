@@ -15,4 +15,11 @@ Written in Rust. (By the way, that bird is a Tūī, a songbird native to my home
 
 - add separate page for tool functions/commands
 - add debugview
-    
+
+## Demonstration
+
+Here's an example of how the main interface for the editor looks. I have added dummy data to demonstrate how the editor handles data which is wider than the column width.
+
+![image](https://github.com/nathangavin/csv-tui/assets/21207405/9b851e19-37ba-4326-b12a-d134e9625d9c)
+
+
