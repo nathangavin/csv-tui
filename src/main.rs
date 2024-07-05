@@ -102,11 +102,11 @@ fn handle_input_args(mut args: Vec<String>) -> Result<(), &'static str> {
     
     let num_args = args.len();
     let mut app_data: CsvModel;
-    let mut delimiter: CsvDelimiter;
+    let mut delimiter: &CsvDelimiter;
 
     if num_args == 0 {
         // default start, no file opening.
-        delimiter = CsvDelimiter::Comma;
+        delimiter = &CsvDelimiter::Comma;
     }
 
     if num_args > 4 {
@@ -121,6 +121,14 @@ fn handle_input_args(mut args: Vec<String>) -> Result<(), &'static str> {
         ("-sc", CsvDelimiter::Semicolon),
         ("-s", CsvDelimiter::Space)
     ]);
+
+    let long_delimiters = HashMap::from([
+        ("--comma", "-c"),
+        ("--tab", "-t"),
+        ("--semicolon", "-sc"),
+        ("--space", "-s")
+    ]);
+
 
     for (index,arg) in args.iter().enumerate() {
         match arg.as_str() {
@@ -141,17 +149,40 @@ fn handle_input_args(mut args: Vec<String>) -> Result<(), &'static str> {
                     }
                 }
             },
-            "-c"|"--comma" => {
-                /*
-                    use the defined map above to combine all the below options into one 
-                    branch. work out how to convert double dash params to single dash, or 
-                    otherwise handle issue.
-                 */
+            "-c"|"--comma" |
+            "-t"|"--tab" |
+            "-sc"|"--semicolon" |
+            "-s"|"--space" => {
+                let delimiter_err_message = "Error - unable to determine chosen delimiter.";
+                match args.get(index) {
+                    Some(tag) => {
+                        match long_delimiters.get(&tag[..]) {
+                            Some(short_tag) => {
+                                match delimiters.get(short_tag) {
+                                    Some(delim) => {
+                                        delimiter = delim;
+                                    },
+                                    None => {
+                                        return Err(delimiter_err_message);
+                                    }
+                                }
+                            },
+                            None => {
+                                match delimiters.get(&tag[..]) {
+                                    Some(delim) => {
+                                        delimiter = delim;
+                                    },
+                                    None => return Err(delimiter_err_message)
+                                }
+                            }
+                        }
+                    },
+                    None => {
+                        return Err(delimiter_err_message);
+                    }
+                }
+
             },
-            "-t"|"--tab" => {
-            },
-            "-sc"|"--semicolon" => {},
-            "-s"|"--space" => {},
             "-d"|"--debug" => {},
             _ => {}
         };
