@@ -103,6 +103,7 @@ fn handle_input_args(mut args: Vec<String>) -> Result<(), &'static str> {
     let num_args = args.len();
     let mut app_data: CsvModel;
     let mut delimiter: &CsvDelimiter;
+    let mut running_mode = RunningMode::Normal;
 
     if num_args == 0 {
         // default start, no file opening.
@@ -183,10 +184,19 @@ fn handle_input_args(mut args: Vec<String>) -> Result<(), &'static str> {
                 }
 
             },
-            "-d"|"--debug" => {},
+            "-d"|"--debug" => {
+                running_mode = RunningMode::Debug;
+            },
             _ => {}
         };
     } 
+
+    /*
+     * write up new logic for handling both:
+     * - different delimiters
+     * - debug mode 
+     * the appStateModel and run function should handle these new variables
+     */
 
     Ok(())
 }
