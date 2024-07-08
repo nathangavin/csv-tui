@@ -22,11 +22,11 @@ pub fn run<B: Backend>(
             app_data: &mut CsvModel,
             app_state: &mut AppStateModel,
             terminal: &mut Terminal<B>,
-            _running_mode: RunningMode
             ) -> io::Result<()> {
     
     loop {
-        
+        // handle usage of running mode, extract from app state
+        todo!();
 
         let info_row_height = 1;
         let input_box_height = 3;
