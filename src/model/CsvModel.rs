@@ -12,10 +12,18 @@ pub enum CsvDelimiter {
     Space
 }
 
+impl Copy for CsvDelimiter {}
+impl Clone for CsvDelimiter {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 pub struct CsvModel {
     data: Vec<Vec<String>>,
     saved: bool,
     filename: Option<String>,
+    delimiter: CsvDelimiter
 }
 
 impl Default for CsvModel {
@@ -24,23 +32,31 @@ impl Default for CsvModel {
             data: Vec::new(),
             saved: true,
             filename: None,
+            delimiter: CsvDelimiter::Comma
         }
     }
 }
 
 impl CsvModel {
-    pub fn load_file(filename: String) -> Result<CsvModel, io::Error> {
+    pub fn load_file(filename: &String, delimiter: &CsvDelimiter) -> Result<CsvModel, io::Error> {
         let mut csv_model = CsvModel::default();
         let mut reader = csv::ReaderBuilder::new()
             .has_headers(false)
             .from_path(&filename)?;
-        csv_model.filename = Some(filename); 
+        csv_model.filename = Some(filename.to_string()); 
        
         for row in reader.records() {
             csv_model.data.push(row.unwrap().iter().map(|cell_value| {
                 String::from(cell_value)
             }).collect());
         }
+
+        Ok(csv_model)
+    }
+
+    pub fn default_with_delimiter(delimiter: &CsvDelimiter) -> Result<CsvModel, io::Error> {
+        let mut csv_model = CsvModel::default();
+        csv_model.delimiter = delimiter.clone();
 
         Ok(csv_model)
     }
