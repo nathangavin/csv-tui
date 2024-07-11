@@ -27,6 +27,7 @@ pub fn run<B: Backend>(
     loop {
         // handle usage of running mode, extract from app state
         todo!();
+        
 
         let info_row_height = 1;
         let input_box_height = 3;
