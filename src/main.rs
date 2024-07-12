@@ -20,7 +20,8 @@ use model::{
         CsvDelimiter},
     AppStateModel::AppStateModel, 
     UtilsModel::RunningMode};
-use controller::defaultController::run as run;
+use controller::defaultController::run as run_default;
+use controller::debugController::run as run_debug;
 
 mod view;
 mod model;
@@ -28,7 +29,7 @@ mod controller;
 
 fn main() -> Result<(), io::Error>{
     let args: Vec<String> = env::args().collect();
-    let (mut app_data,mut app_state) = match handle_input_args(args) {
+    let (mut app_data,mut app_state, running_mode) = match handle_input_args(args) {
         Ok(res) => res,
         Err(error) => {
             panic!("{:?}", error);
@@ -39,7 +40,10 @@ fn main() -> Result<(), io::Error>{
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend  = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    let res = run(&mut app_data, &mut app_state, &mut terminal);
+    let res = match running_mode {
+        RunningMode::Normal => run_default(&mut app_data, &mut app_state, &mut terminal),
+        RunningMode::Debug => run_debug(&mut app_data, &mut app_state, &mut terminal)
+    };
 
     disable_raw_mode()?;
     execute!(
@@ -57,7 +61,7 @@ fn main() -> Result<(), io::Error>{
 // TODO
 // add button for showing commands
 
-fn handle_input_args(mut args: Vec<String>) -> Result<(CsvModel, AppStateModel), &'static str> {
+fn handle_input_args(mut args: Vec<String>) -> Result<(CsvModel, AppStateModel, RunningMode), &'static str> {
     /*
      * number of args equals different scenarios
      * -f or --filename filename
@@ -170,5 +174,5 @@ fn handle_input_args(mut args: Vec<String>) -> Result<(CsvModel, AppStateModel),
 
     let app_state = AppStateModel::from_running_mode(&running_mode);
 
-    Ok((app_data, app_state))
+    Ok((app_data, app_state, running_mode))
 }
