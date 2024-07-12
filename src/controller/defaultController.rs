@@ -11,7 +11,6 @@ use crate::model::{
     AppStateModel::AppStateModel,
     CsvModel::CsvModel,
     UtilsModel::{
-        RunningMode,
         InputMode,
         Size
     },
@@ -25,9 +24,6 @@ pub fn run<B: Backend>(
             ) -> io::Result<()> {
     
     loop {
-        // handle usage of running mode, extract from app state
-        todo!();
-        
 
         let info_row_height = 1;
         let input_box_height = 3;
