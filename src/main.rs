@@ -20,8 +20,11 @@ use model::{
         CsvDelimiter},
     AppStateModel::AppStateModel, 
     UtilsModel::RunningMode};
-use controller::defaultController::run as run_default;
-use controller::debugController::run as run_debug;
+
+use view::defaultView::render_ui as default_render;
+use view::debugView::render_ui as debug_render;
+use controller::defaultController::run;
+//use controller::debugController::run as run_debug;
 
 mod view;
 mod model;
@@ -41,8 +44,8 @@ fn main() -> Result<(), io::Error>{
     let backend  = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     let res = match running_mode {
-        RunningMode::Normal => run_default(&mut app_data, &mut app_state, &mut terminal),
-        RunningMode::Debug => run_debug(&mut app_data, &mut app_state, &mut terminal)
+        RunningMode::Normal => run(&mut app_data, &mut app_state, default_render, &mut terminal),
+        RunningMode::Debug => run(&mut app_data, &mut app_state, debug_render, &mut terminal)
     };
 
     disable_raw_mode()?;

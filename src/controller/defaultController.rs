@@ -1,7 +1,7 @@
 use std::io;
 use tui::{
     backend::Backend,
-    Terminal};
+    Terminal, Frame};
 use crossterm::event::{
         self, 
         KeyCode, 
@@ -11,15 +11,27 @@ use crate::model::{
     AppStateModel::AppStateModel,
     CsvModel::CsvModel,
     UtilsModel::{
+        RunningMode,
         InputMode,
-        Size
+        Size, Position
     },
 };
-use crate::view::defaultView::render_ui;
 
 pub fn run<B: Backend>(
             app_data: &mut CsvModel,
             app_state: &mut AppStateModel,
+            ui_render_function: fn(Vec<Vec<String>>,
+                                   &Size,
+                                   Size,
+                                   Vec<usize>,
+                                   &Position,
+                                   &Position,
+                                   &InputMode,
+                                   &RunningMode,
+                                   &str,
+                                   &Option<String>,
+                                   bool,
+                                   &mut Frame<B>),
             terminal: &mut Terminal<B>,
             ) -> io::Result<()> {
     
@@ -74,7 +86,7 @@ pub fn run<B: Backend>(
         let data_slice = app_data.get_data_segment(&corner_pos, &grid_size);
 
         terminal.draw(|f| {
-            render_ui(data_slice, 
+            ui_render_function(data_slice, 
                       &grid_size,
                       app_data.get_data_size(),
                       column_widths,
