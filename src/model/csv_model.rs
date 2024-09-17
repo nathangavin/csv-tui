@@ -67,6 +67,7 @@ impl CsvModel {
             .has_headers(false)
             .from_path(&filename)?;
         csv_model.filename = Some(filename.to_string()); 
+        todo!("implement string wrapping to handle delimiter in line");
 
         for row in reader.records() {
             csv_model.data.push(row.unwrap().iter().map(|cell_value| {
@@ -89,6 +90,7 @@ impl CsvModel {
     }
 
     pub fn set_filename(&mut self, filename: String) {
+        todo!("check if string has length > 0");
         self.filename = Some(filename);
     }
 
@@ -322,6 +324,7 @@ impl CsvModel {
     }
 
     pub fn save_data_to_file(&self) -> std::io::Result<()>  {
+        todo!("implement string wrapping to handle delimiter in line");
         match &self.filename {
             Some(name) => {
                 if name.ends_with(".csv") {
@@ -345,6 +348,7 @@ impl CsvModel {
             None => 0
         };
         let delim_char = self.delimiter.as_char();
+        todo!("implement string wrapping to handle delimiter in line");
         let output = self.data.iter().fold(String::new(), |mut sum, row| {
             let mut row_value = row.iter().fold(
                 String::new(), 

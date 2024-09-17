@@ -217,6 +217,7 @@ pub fn run<B: Backend>(
                 InputMode::Saving => match key.code {
                     KeyCode::Enter => {
                         app_data.set_filename(app_state.drain_input());
+                        todo!("implement check to see if filename is actually a value (input might be empty)");
                         match app_data.save_data_to_file() {
                             Ok(_) => {
                                 app_data.set_saved(true);
