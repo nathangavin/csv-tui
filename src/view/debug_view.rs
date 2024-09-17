@@ -3,7 +3,7 @@ use tui::{
     Frame
 };
 
-use crate::model::UtilsModel::{
+use crate::model::utils_model::{
     Position,
     Size,
     InputMode,
@@ -21,9 +21,17 @@ pub fn render_ui<B: Backend>(data_slice: Vec<Vec<String>>,
                             current_input: &str,
                             filename: &Option<String>,
                             is_saved: bool,
-                            f: &mut Frame<B>) {
+                            _f: &mut Frame<B>) {
+    println!("{:?}", filename);
+    println!("{:?}", is_saved);
+    println!("{:?}", input_mode);
+    println!("{:?}", running_mode);
+    println!("{:?}", corner_pos);
+    println!("{:?}", relative_pos);
+    println!("{:?}", column_widths);
+    println!("{:?}", current_input);
+    println!("{:?}", data_size);
+    println!("{:?}", grid_size);
+    println!("{:?}", data_slice);
     todo!();
-
-    
-
 }

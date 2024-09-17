@@ -1,6 +1,6 @@
 use std::{io::{self, Error as IO_Error, ErrorKind}, fs, vec };
 
-use super::UtilsModel::{
+use crate::model::utils_model::{
     Size,
     Position
 };
@@ -16,6 +16,26 @@ impl Copy for CsvDelimiter {}
 impl Clone for CsvDelimiter {
     fn clone(&self) -> Self {
         *self
+    }
+}
+
+impl CsvDelimiter {
+    fn as_u8(&self) -> u8 {
+        match self {
+            CsvDelimiter::Tab => b'\t',
+            CsvDelimiter::Comma => b',',
+            CsvDelimiter::Space => b' ',
+            CsvDelimiter::Semicolon => b';'
+        }
+    }
+
+    fn as_char(&self) -> char {
+        match self {
+            CsvDelimiter::Tab => '\t',
+            CsvDelimiter::Comma => ',',
+            CsvDelimiter::Space => ' ',
+            CsvDelimiter::Semicolon => ';'
+        }
     }
 }
 
@@ -40,11 +60,14 @@ impl Default for CsvModel {
 impl CsvModel {
     pub fn load_file(filename: &String, delimiter: &CsvDelimiter) -> Result<CsvModel, io::Error> {
         let mut csv_model = CsvModel::default();
+        csv_model.delimiter = *delimiter; 
+
         let mut reader = csv::ReaderBuilder::new()
+            .delimiter(delimiter.as_u8())
             .has_headers(false)
             .from_path(&filename)?;
         csv_model.filename = Some(filename.to_string()); 
-       
+
         for row in reader.records() {
             csv_model.data.push(row.unwrap().iter().map(|cell_value| {
                 String::from(cell_value)
@@ -321,12 +344,13 @@ impl CsvModel {
             Some(value) => *value,
             None => 0
         };
+        let delim_char = self.delimiter.as_char();
         let output = self.data.iter().fold(String::new(), |mut sum, row| {
             let mut row_value = row.iter().fold(
                 String::new(), 
                 |mut row_sum, cell| {
                     row_sum.push_str(cell);
-                    row_sum.push(',');
+                    row_sum.push(delim_char);
                     row_sum
                 });
             if row.len() < num_cols {

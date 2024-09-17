@@ -8,9 +8,9 @@ use crossterm::event::{
         Event};
 
 use crate::model::{
-    AppStateModel::AppStateModel,
-    CsvModel::CsvModel,
-    UtilsModel::{
+    app_state_model::AppStateModel,
+    csv_model::CsvModel,
+    utils_model::{
         RunningMode,
         InputMode,
         Size, Position

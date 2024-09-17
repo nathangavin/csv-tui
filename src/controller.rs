@@ -1,1 +1,1 @@
-pub mod defaultController;
+pub mod default_controller;

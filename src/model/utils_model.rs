@@ -16,18 +16,19 @@ pub enum _InsertMode {
     Removing
 }
 
+#[derive(Debug)]
 pub enum RunningMode {
     Normal,
     Debug
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Position {
     pub row: usize,
     pub col: usize
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Size {
     pub width: usize,
     pub height: usize

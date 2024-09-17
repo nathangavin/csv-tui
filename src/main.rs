@@ -15,15 +15,15 @@ use crossterm::{
         DisableMouseCapture}};
 
 use model::{
-    CsvModel::{
+    csv_model::{
         CsvModel, 
         CsvDelimiter},
-    AppStateModel::AppStateModel, 
-    UtilsModel::RunningMode};
+    app_state_model::AppStateModel, 
+    utils_model::RunningMode};
 
-use view::defaultView::render_ui as default_render;
-use view::debugView::render_ui as debug_render;
-use controller::defaultController::run;
+use view::default_view::render_ui as default_render;
+use view::debug_view::render_ui as debug_render;
+use controller::default_controller::run;
 //use controller::debugController::run as run_debug;
 
 mod view;
@@ -32,7 +32,8 @@ mod controller;
 
 fn main() -> Result<(), io::Error>{
     let args: Vec<String> = env::args().collect();
-    let (mut app_data,mut app_state, running_mode) = match handle_input_args(args) {
+    // process args
+    let (mut app_data, mut app_state, running_mode) = match handle_input_args(args) {
         Ok(res) => res,
         Err(error) => {
             panic!("{:?}", error);
@@ -64,7 +65,7 @@ fn main() -> Result<(), io::Error>{
 // TODO
 // add button for showing commands
 
-fn handle_input_args(mut args: Vec<String>) -> Result<(CsvModel, AppStateModel, RunningMode), &'static str> {
+fn handle_input_args(args: Vec<String>) -> Result<(CsvModel, AppStateModel, RunningMode), &'static str> {
     /*
      * number of args equals different scenarios
      * -f or --filename filename
@@ -76,20 +77,19 @@ fn handle_input_args(mut args: Vec<String>) -> Result<(CsvModel, AppStateModel, 
      * -d or --debug
      */
 
-    let num_args = args.len();
-    let mut app_data: CsvModel;
-    let mut filename: Option<&String>;
-    let mut delimiter: Option<&CsvDelimiter>;
+    let app_data: CsvModel;
+    let mut filename: Option<&String> = None;
+    let mut delimiter: Option<&CsvDelimiter> = None;
     let mut running_mode = RunningMode::Normal;
 
-    if num_args == 0 {
-        // default start, no file opening.
-        delimiter = Some(&CsvDelimiter::Comma);
-    }
+    println!("{:?}", args);
 
+    /*
+     * not sure why I had this
     if num_args > 4 {
         args.truncate(4);
     }
+    */
 
     let delimiters = HashMap::from([
         ("-c", CsvDelimiter::Comma),
@@ -169,7 +169,6 @@ fn handle_input_args(mut args: Vec<String>) -> Result<(CsvModel, AppStateModel, 
                 },
                 None => {
                     app_data = CsvModel::default();
-                    
                 }
             }
         }
