@@ -76,7 +76,7 @@ fn handle_input_args(args: Vec<String>) -> Result<(CsvModel, AppStateModel, Runn
      * -s or --space
      * -d or --debug
      */
-
+    todo!("implement help arg to show available args");
     let app_data: CsvModel;
     let mut filename: Option<&String> = None;
     let mut delimiter: Option<&CsvDelimiter> = None;
