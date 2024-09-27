@@ -216,8 +216,11 @@ pub fn run<B: Backend>(
                 },
                 InputMode::Saving => match key.code {
                     KeyCode::Enter => {
-                        app_data.set_filename(app_state.drain_input());
-                        todo!("implement check to see if filename is actually a value (input might be empty)");
+                        let input = app_state.drain_input();
+                        app_data.set_filename(match input.len() > 0 {
+                            true => Some(input),
+                            false => None
+                        });
                         match app_data.save_data_to_file() {
                             Ok(_) => {
                                 app_data.set_saved(true);
@@ -276,7 +279,11 @@ pub fn run<B: Backend>(
                         None => { 
                             match key.code {
                                 KeyCode::Enter => {
-                                    app_data.set_filename(app_state.drain_input());
+                                    let input = app_state.drain_input();
+                                    app_data.set_filename(match input.len() > 0 {
+                                        true => Some(input),
+                                        false => None
+                                    });
                                     match app_data.save_data_to_file() {
                                         Ok(_) => {
                                             app_data.set_saved(true);

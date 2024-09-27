@@ -1,4 +1,4 @@
-use std::{io::{self, Error as IO_Error, ErrorKind}, fs, vec };
+use std::{fs, io::{self, Error as IO_Error, ErrorKind}, vec };
 
 use crate::model::utils_model::{
     Size,
@@ -39,6 +39,26 @@ impl CsvDelimiter {
     }
 }
 
+trait CSVPreparation {
+    fn escape_double_quote(&mut self);
+    fn wrap_double_quotes(&mut self);
+}
+
+impl CSVPreparation for String {
+    fn escape_double_quote(&mut self) {
+        let double_quote = '"';
+        if !self.contains(double_quote) {
+            return;
+        } 
+
+        self.replace("\"", "\"\"");
+    }
+
+    fn wrap_double_quotes(&mut self) {
+        *self = format!("\"{}\"", self);
+    }
+}
+
 pub struct CsvModel {
     data: Vec<Vec<String>>,
     saved: bool,
@@ -67,7 +87,7 @@ impl CsvModel {
             .has_headers(false)
             .from_path(&filename)?;
         csv_model.filename = Some(filename.to_string()); 
-        todo!("implement string wrapping to handle delimiter in line");
+        //todo!("implement string wrapping to handle delimiter in line");
 
         for row in reader.records() {
             csv_model.data.push(row.unwrap().iter().map(|cell_value| {
@@ -89,9 +109,8 @@ impl CsvModel {
         &self.filename
     }
 
-    pub fn set_filename(&mut self, filename: String) {
-        todo!("check if string has length > 0");
-        self.filename = Some(filename);
+    pub fn set_filename(&mut self, filename: Option<String>) {
+        self.filename = filename;
     }
 
     pub fn _get_data(&self) -> &Vec<Vec<String>> {
@@ -324,7 +343,6 @@ impl CsvModel {
     }
 
     pub fn save_data_to_file(&self) -> std::io::Result<()>  {
-        todo!("implement string wrapping to handle delimiter in line");
         match &self.filename {
             Some(name) => {
                 if name.ends_with(".csv") {
@@ -348,12 +366,19 @@ impl CsvModel {
             None => 0
         };
         let delim_char = self.delimiter.as_char();
-        todo!("implement string wrapping to handle delimiter in line");
+        let double_quote = '"';
         let output = self.data.iter().fold(String::new(), |mut sum, row| {
             let mut row_value = row.iter().fold(
                 String::new(), 
                 |mut row_sum, cell| {
-                    row_sum.push_str(cell);
+                    let mut cell_val = cell.to_owned();
+                    if cell.contains(double_quote) {
+                        cell_val.escape_double_quote(); 
+                    } 
+                    if cell.contains(delim_char) || cell.contains(double_quote) {
+                        cell_val.wrap_double_quotes();
+                    }
+                    row_sum.push_str(&cell_val);
                     row_sum.push(delim_char);
                     row_sum
                 });
