@@ -51,7 +51,7 @@ impl CSVPreparation for String {
             return;
         } 
 
-        self.replace("\"", "\"\"");
+        *self = self.replace("\"", "\"\"");
     }
 
     fn wrap_double_quotes(&mut self) {
@@ -87,7 +87,6 @@ impl CsvModel {
             .has_headers(false)
             .from_path(&filename)?;
         csv_model.filename = Some(filename.to_string()); 
-        //todo!("implement string wrapping to handle delimiter in line");
 
         for row in reader.records() {
             csv_model.data.push(row.unwrap().iter().map(|cell_value| {
