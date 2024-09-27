@@ -1,7 +1,8 @@
-use crate::model::UtilsModel::Position;
-use crate::model::UtilsModel::InputMode;
-
-use super::UtilsModel::RunningMode;
+use crate::model::utils_model::{
+    Position,
+    InputMode,
+    RunningMode
+};
 
 pub struct AppStateModel {
     /// Current value of the input box

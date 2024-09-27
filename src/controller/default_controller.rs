@@ -1,32 +1,41 @@
 use std::io;
 use tui::{
     backend::Backend,
-    Terminal};
+    Terminal, Frame};
 use crossterm::event::{
         self, 
         KeyCode, 
         Event};
 
 use crate::model::{
-    AppStateModel::AppStateModel,
-    CsvModel::CsvModel,
-    UtilsModel::{
+    app_state_model::AppStateModel,
+    csv_model::CsvModel,
+    utils_model::{
         RunningMode,
         InputMode,
-        Size
+        Size, Position
     },
 };
-use crate::view::defaultView::render_ui;
 
 pub fn run<B: Backend>(
             app_data: &mut CsvModel,
             app_state: &mut AppStateModel,
+            ui_render_function: fn(Vec<Vec<String>>,
+                                   &Size,
+                                   Size,
+                                   Vec<usize>,
+                                   &Position,
+                                   &Position,
+                                   &InputMode,
+                                   &RunningMode,
+                                   &str,
+                                   &Option<String>,
+                                   bool,
+                                   &mut Frame<B>),
             terminal: &mut Terminal<B>,
-            _running_mode: RunningMode
             ) -> io::Result<()> {
     
     loop {
-        
 
         let info_row_height = 1;
         let input_box_height = 3;
@@ -77,7 +86,7 @@ pub fn run<B: Backend>(
         let data_slice = app_data.get_data_segment(&corner_pos, &grid_size);
 
         terminal.draw(|f| {
-            render_ui(data_slice, 
+            ui_render_function(data_slice, 
                       &grid_size,
                       app_data.get_data_size(),
                       column_widths,
@@ -207,7 +216,11 @@ pub fn run<B: Backend>(
                 },
                 InputMode::Saving => match key.code {
                     KeyCode::Enter => {
-                        app_data.set_filename(app_state.drain_input());
+                        let input = app_state.drain_input();
+                        app_data.set_filename(match input.len() > 0 {
+                            true => Some(input),
+                            false => None
+                        });
                         match app_data.save_data_to_file() {
                             Ok(_) => {
                                 app_data.set_saved(true);
@@ -266,7 +279,11 @@ pub fn run<B: Backend>(
                         None => { 
                             match key.code {
                                 KeyCode::Enter => {
-                                    app_data.set_filename(app_state.drain_input());
+                                    let input = app_state.drain_input();
+                                    app_data.set_filename(match input.len() > 0 {
+                                        true => Some(input),
+                                        false => None
+                                    });
                                     match app_data.save_data_to_file() {
                                         Ok(_) => {
                                             app_data.set_saved(true);

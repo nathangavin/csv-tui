@@ -21,7 +21,7 @@ use tui::{
         Modifier, 
         Color}};
 
-use crate::model::UtilsModel::{
+use crate::model::utils_model::{
     Position,
     Size,
     InputMode,

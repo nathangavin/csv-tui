@@ -1,14 +1,69 @@
-use std::{io::{self, Error as IO_Error, ErrorKind}, fs, vec };
+use std::{fs, io::{self, Error as IO_Error, ErrorKind}, vec };
 
-use super::UtilsModel::{
+use crate::model::utils_model::{
     Size,
     Position
 };
+
+pub enum CsvDelimiter {
+    Comma,
+    Tab,
+    Semicolon,
+    Space
+}
+
+impl Copy for CsvDelimiter {}
+impl Clone for CsvDelimiter {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl CsvDelimiter {
+    fn as_u8(&self) -> u8 {
+        match self {
+            CsvDelimiter::Tab => b'\t',
+            CsvDelimiter::Comma => b',',
+            CsvDelimiter::Space => b' ',
+            CsvDelimiter::Semicolon => b';'
+        }
+    }
+
+    fn as_char(&self) -> char {
+        match self {
+            CsvDelimiter::Tab => '\t',
+            CsvDelimiter::Comma => ',',
+            CsvDelimiter::Space => ' ',
+            CsvDelimiter::Semicolon => ';'
+        }
+    }
+}
+
+trait CSVPreparation {
+    fn escape_double_quote(&mut self);
+    fn wrap_double_quotes(&mut self);
+}
+
+impl CSVPreparation for String {
+    fn escape_double_quote(&mut self) {
+        let double_quote = '"';
+        if !self.contains(double_quote) {
+            return;
+        } 
+
+        *self = self.replace("\"", "\"\"");
+    }
+
+    fn wrap_double_quotes(&mut self) {
+        *self = format!("\"{}\"", self);
+    }
+}
 
 pub struct CsvModel {
     data: Vec<Vec<String>>,
     saved: bool,
     filename: Option<String>,
+    delimiter: CsvDelimiter
 }
 
 impl Default for CsvModel {
@@ -17,18 +72,22 @@ impl Default for CsvModel {
             data: Vec::new(),
             saved: true,
             filename: None,
+            delimiter: CsvDelimiter::Comma
         }
     }
 }
 
 impl CsvModel {
-    pub fn load_file(filename: String) -> Result<CsvModel, io::Error> {
+    pub fn load_file(filename: &String, delimiter: &CsvDelimiter) -> Result<CsvModel, io::Error> {
         let mut csv_model = CsvModel::default();
+        csv_model.delimiter = *delimiter; 
+
         let mut reader = csv::ReaderBuilder::new()
+            .delimiter(delimiter.as_u8())
             .has_headers(false)
             .from_path(&filename)?;
-        csv_model.filename = Some(filename); 
-       
+        csv_model.filename = Some(filename.to_string()); 
+
         for row in reader.records() {
             csv_model.data.push(row.unwrap().iter().map(|cell_value| {
                 String::from(cell_value)
@@ -38,12 +97,19 @@ impl CsvModel {
         Ok(csv_model)
     }
 
+    pub fn default_with_delimiter(delimiter: &CsvDelimiter) -> Result<CsvModel, io::Error> {
+        let mut csv_model = CsvModel::default();
+        csv_model.delimiter = delimiter.clone();
+
+        Ok(csv_model)
+    }
+
     pub fn get_filename(&self) -> &Option<String> {
         &self.filename
     }
 
-    pub fn set_filename(&mut self, filename: String) {
-        self.filename = Some(filename);
+    pub fn set_filename(&mut self, filename: Option<String>) {
+        self.filename = filename;
     }
 
     pub fn _get_data(&self) -> &Vec<Vec<String>> {
@@ -298,12 +364,21 @@ impl CsvModel {
             Some(value) => *value,
             None => 0
         };
+        let delim_char = self.delimiter.as_char();
+        let double_quote = '"';
         let output = self.data.iter().fold(String::new(), |mut sum, row| {
             let mut row_value = row.iter().fold(
                 String::new(), 
                 |mut row_sum, cell| {
-                    row_sum.push_str(cell);
-                    row_sum.push(',');
+                    let mut cell_val = cell.to_owned();
+                    if cell.contains(double_quote) {
+                        cell_val.escape_double_quote(); 
+                    } 
+                    if cell.contains(delim_char) || cell.contains(double_quote) {
+                        cell_val.wrap_double_quotes();
+                    }
+                    row_sum.push_str(&cell_val);
+                    row_sum.push(delim_char);
                     row_sum
                 });
             if row.len() < num_cols {
