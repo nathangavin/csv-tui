@@ -18,6 +18,7 @@ use model::utils_model::RunningMode;
 
 use view::default_view::render_ui as default_render;
 use view::debug_view::render_ui as debug_render;
+use view::help_view::print_help_text;
 use controller::default_controller::run;
 use utils::handle_args::handle_input_args;
 //use controller::debugController::run as run_debug;
@@ -37,11 +38,9 @@ fn main() -> Result<(), io::Error>{
         }
     };
 
-    match running_mode {
-        RunningMode::Help => {
-            return Ok(());
-        }
-        _ => {}
+    if running_mode == RunningMode::Help {
+        print_help_text();
+        return Ok(());
     }
 
     enable_raw_mode()?;

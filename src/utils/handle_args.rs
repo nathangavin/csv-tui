@@ -73,8 +73,13 @@ pub fn handle_input_args(args: Vec<String>)
 
             },
             "-d"|"--debug" => {
-                running_mode = RunningMode::Debug;
+                if running_mode != RunningMode::Help {
+                    running_mode = RunningMode::Debug;
+                }
             },
+            "-h"|"--help" => {
+                running_mode = RunningMode::Help;
+            }
             _ => {}
         };
     } 

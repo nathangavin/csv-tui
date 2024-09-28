@@ -16,7 +16,7 @@ pub enum _InsertMode {
     Removing
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum RunningMode {
     Normal,
     Debug,
