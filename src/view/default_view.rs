@@ -274,6 +274,9 @@ pub fn render_ui<B: Backend>(data_slice: Vec<Vec<String>>,
         },
         RunningMode::Debug => {
             f.render_widget(debug_display, chunks[2]);
+        },
+        RunningMode::Help => {
+            return;
         }
     }
     

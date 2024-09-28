@@ -35,6 +35,9 @@ impl AppStateModel {
             RunningMode::Normal => {},
             RunningMode::Debug => {
                 state.running_mode = RunningMode::Debug;
+            },
+            RunningMode::Help => {
+                state.running_mode = RunningMode::Help;
             }
         };
         state
