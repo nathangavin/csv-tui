@@ -36,6 +36,14 @@ fn main() -> Result<(), io::Error>{
             panic!("{:?}", error);
         }
     };
+
+    match running_mode {
+        RunningMode::Help => {
+            return Ok(());
+        }
+        _ => {}
+    }
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -49,7 +57,9 @@ fn main() -> Result<(), io::Error>{
         RunningMode::Debug => run(&mut app_data, 
                                   &mut app_state, 
                                   debug_render, 
-                                  &mut terminal)
+                                  &mut terminal),
+        RunningMode::Help => Err(io::Error::new(io::ErrorKind::Other, 
+                                                "RunningMode Help not valid run option"))
     };
 
     disable_raw_mode()?;

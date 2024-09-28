@@ -12,6 +12,7 @@ pub fn handle_input_args(args: Vec<String>)
 
     /*
      * number of args equals different scenarios
+     * -h or --help help
      * -f or --filename filename
      * default is comma separated
      * -c or --comma

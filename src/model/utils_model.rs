@@ -19,7 +19,8 @@ pub enum _InsertMode {
 #[derive(Debug)]
 pub enum RunningMode {
     Normal,
-    Debug
+    Debug,
+    Help
 }
 
 #[derive(Clone, Copy, Debug)]
